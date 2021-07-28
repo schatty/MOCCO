@@ -6,6 +6,7 @@ import wandb
 
 from algos.sac import SAC
 from algos.td3 import TD3
+from algos.ddpg import DDPG
 from trainers.mf_trainer import ModelFreeTrainer
 from env import make_env
 
@@ -49,6 +50,17 @@ def run(args):
         )
     elif args.algo == "TD3":
         algo = TD3(
+            state_shape=STATE_SHAPE,
+            action_shape=ACTION_SHAPE,
+            target_update_coef=args.tau,
+            gamma=args.gamma,
+            batch_size=args.batch_size,
+            device=args.device,
+            seed=args.seed,
+            wandb=wandb
+        )
+    elif args.algo == "DDPG":
+        algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,

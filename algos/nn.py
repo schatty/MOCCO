@@ -4,6 +4,28 @@ import torch.nn as nn
 from .utils import initialize_weight
 
 
+class Critic(nn.Module):
+
+    def __init__(self, state_shape, action_shape, hidden_units=(256, 256),
+                 hidden_activation=nn.ReLU(inplace=True)):
+        super().__init__()
+
+        self.q1 = MLP(
+            input_dim=state_shape[0] + action_shape[0],
+            output_dim=1,
+            hidden_units=hidden_units,
+            hidden_activation=hidden_activation
+        )
+
+    def forward(self, states, actions):
+        x = torch.cat([states, actions], dim=-1)
+        return self.q1(x)
+
+    def Q1(self, states, actions):
+        x = torch.cat([states, actions], dim=-1)
+        return self.q1(x)
+
+
 class DoubleCritic(nn.Module):
 
     def __init__(self, state_shape, action_shape, hidden_units=(256, 256),
