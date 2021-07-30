@@ -8,7 +8,7 @@ from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 class ModelFreeTrainer:
 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6), gamma=0.99,
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, model_dynamics=None, buffer_size=int(3e6), gamma=0.99,
                  device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
                  save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
@@ -18,6 +18,7 @@ class ModelFreeTrainer:
             env: Enviornment object.
             env_test: Environment object for evaluation.
             algo: Codename for the algo (SAC).
+            model_dynamics: Model Dynamics.
             buffer_size: Buffer size in transitions.
             gamma: Discount factor.
             device: Name of the device.
@@ -35,6 +36,7 @@ class ModelFreeTrainer:
         self.env = env
         self.env_test = env_test
         self.algo = algo
+        self.model_dynamics = model_dynamics
         self.gamma = gamma
         self.device = device
         self.log_dir = log_dir
@@ -94,6 +96,10 @@ class ModelFreeTrainer:
                 continue
             batch = self.buffer.sample(self.batch_size)
             self.algo.update(*batch)
+
+            # Model-dynamics update
+            s, a, r, d, s_ = batch
+            self.model_dynamics.update(s, a, s_)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
