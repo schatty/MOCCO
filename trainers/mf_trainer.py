@@ -99,7 +99,7 @@ class ModelFreeTrainer:
 
             # Model-dynamics update
             s, a, r, d, s_ = batch
-            self.model_dynamics.update(s, a, s_)
+            self.model_dynamics.update(s, a, r, s_)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
