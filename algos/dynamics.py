@@ -46,7 +46,7 @@ class ModelDynamics:
         model_pred = self.dynamics(states, actions)
         next_states_pred, reward_pred = model_pred[:, :-1], model_pred[:, -1].unsqueeze(1)
 
-        alpha = 1.0
+        alpha = 0.01
         beta = 1.0
         loss_states = (next_states - next_states_pred).pow(2).mean()
         loss_reward = (rewards - reward_pred).pow(2).mean()
