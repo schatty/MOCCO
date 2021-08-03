@@ -66,17 +66,28 @@ class EpisodicReplayBuffer:
 
         return ep_inds, step_inds
 
-    def sample(self, batch_size):
+    def sample(self, batch_size, with_return=False):
         inds = np.random.randint(low=0, high=self.cur_size, size=batch_size)
         ep_inds, step_inds = self._inds_to_episodic(inds)
+
+        returns = self._get_returns(ep_inds, step_inds).to(self.device)
 
         return (
             self.states[ep_inds, step_inds],
             self.actions[ep_inds, step_inds],
             self.rewards[ep_inds, step_inds],
             self.dones[ep_inds, step_inds],
-            self.states[ep_inds, step_inds + 1]
+            self.states[ep_inds, step_inds + 1],
+            returns,
+            torch.tensor(step_inds).unsqueeze(1).float().to(self.device)
         )
+
+    def _get_returns(self, ep_inds, step_inds):
+        R = torch.zeros(len(ep_inds), 1)
+        for i in range(len(ep_inds)):
+            ep_idx = ep_inds[i]
+            R[i, 0] = sum(self.rewards[ep_idx, step_inds[i:self.ep_lens[ep_idx]]])
+        return R
 
     def save(self, path: str):
         """

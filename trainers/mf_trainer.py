@@ -94,17 +94,16 @@ class ModelFreeTrainer:
 
             if len(self.buffer) < self.batch_size:
                 continue
-            batch = self.buffer.sample(self.batch_size)
-            self.algo.update(*batch)
+            (s, a, r, d, s_, R, step_inds) = self.buffer.sample(self.batch_size, with_return=True)
+            self.algo.update(s, a, r, d, s_)
 
             # Model-dynamics update
-            s, a, r, d, s_ = batch
-            self.model_dynamics.update(s, a, r, s_)
+            self.model_dynamics.update(s, a, r, s_, R, step_inds / 1000.)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
                 wandb.log({"trainer/ep_reward": mean_reward, "env_step": env_step})
-                wandb.log({"trainer/avg_reward": batch[2].mean(), "env_step": env_step})
+                wandb.log({"trainer/avg_reward": r.mean(), "env_step": env_step})
                 wandb.log({"trainer/buffer_transitions": len(self.buffer), "env_step": env_step})
                 wandb.log({"trainer/buffer_episodes": self.buffer.num_episodes, "env_step": env_step})
                 wandb.log({"trainer/buffer_last_ep_len": self.buffer.get_last_ep_len(), "env_step": env_step})
@@ -126,7 +125,7 @@ class ModelFreeTrainer:
 
             if env_step % self.stdout_log_every == 0:
                 perc = int(env_step / self.num_steps * 100)
-                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
+                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {r.mean():10.3f} Ep Reward {mean_reward:10.3f}")
 
     def evaluate(self):
         returns = []

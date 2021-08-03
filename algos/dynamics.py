@@ -14,14 +14,14 @@ class Dynamics(nn.Module):
         super().__init__()
 
         self.mlp = MLP(
-            input_dim=state_shape[0] + action_shape[0],
-            output_dim=state_shape[0] + 1,
+            input_dim=state_shape[0] + action_shape[0] + 1,
+            output_dim=state_shape[0] + 2, # + reward + return
             hidden_units=hidden_units,
             hidden_activation=hidden_activation,
         ).apply(initialize_weight)
 
-    def forward(self, states, actions):
-        x = torch.cat([states, actions], dim=-1)
+    def forward(self, states, actions, t):
+        x = torch.cat([states, actions, t], dim=-1)
         return self.mlp(x)
 
 
@@ -42,15 +42,17 @@ class ModelDynamics:
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
 
-    def update(self, states, actions, rewards, next_states):
-        model_pred = self.dynamics(states, actions)
-        next_states_pred, reward_pred = model_pred[:, :-1], model_pred[:, -1].unsqueeze(1)
+    def update(self, states, actions, rewards, next_states, returns, t):
+        model_pred = self.dynamics(states, actions, t)
+        next_states_pred, reward_pred, return_pred = model_pred[:, :-2], model_pred[:, -2].unsqueeze(1), model_pred[:, -1].unsqueeze(1)
 
         alpha = 0.01
         beta = 1.0
+        gamma = 0.001
         loss_states = (next_states - next_states_pred).pow(2).mean()
         loss_reward = (rewards - reward_pred).pow(2).mean()
-        loss = alpha * loss_states + beta * loss_reward
+        loss_return = (returns - return_pred).pow(2).mean()
+        loss = alpha * loss_states + beta * loss_reward + gamma * loss_return
 
         self.optim_dynamics.zero_grad()
         loss.backward()
@@ -59,6 +61,7 @@ class ModelDynamics:
         if self.update_step % self.log_every == 0:
             self.wandb.log({"dynamics/loss_state": alpha * loss_states.item(), "update_step": self.update_step})
             self.wandb.log({"dynamics/loss_reward": beta * loss_reward.item(), "update_step": self.update_step})
+            self.wandb.log({"dynamics/loss_return": gamma * loss_return.item(), "update_step": self.update_step})
             self.wandb.log({"dynamics/loss": loss.item(), "update_step": self.update_step})
             self.wandb.log({"dynamics/eval": loss_states.item(), "update_step": self.update_step})
             self.wandb.log({"dynamics/states_mean": states.mean().item(), "update_step": self.update_step})
