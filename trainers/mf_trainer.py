@@ -86,7 +86,7 @@ class ModelFreeTrainer:
             if ep_step == self.env._max_episode_steps:
                 done_masked = False
 
-            self.buffer.append(state, action, reward, done_masked, episode_done=done)
+            self.buffer.append(state, action, reward, done_masked, episode_done=done, env=self.env, algo=self.algo)
             if done:
                 next_state = self.env.reset()
                 ep_step = 0

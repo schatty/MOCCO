@@ -34,9 +34,10 @@ class EpisodicReplayBuffer:
         self.rewards = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.dones = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.states = torch.empty((self.max_episodes, max_episode_len + 1, *state_shape), dtype=dtype, device=device)
+        self.returns = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.ep_lens = [0] * self.max_episodes
 
-    def append(self, state, action, reward, done, episode_done=None):
+    def append(self, state, action, reward, done, episode_done=None, env=None, algo=None):
         """
         Args:
             state: state.
@@ -44,6 +45,7 @@ class EpisodicReplayBuffer:
             reward: reward.
             done: done only if episode ends naturally.
             episode_done: done that can be set to True if time limit is reached.
+            env: Environment instance.
         """
         self.states[self.ep_pointer, self.ep_lens[self.ep_pointer]].copy_(torch.from_numpy(state))
         self.actions[self.ep_pointer, self.ep_lens[self.ep_pointer]].copy_(torch.from_numpy(action))
@@ -53,6 +55,26 @@ class EpisodicReplayBuffer:
         self.ep_lens[self.ep_pointer] += 1  
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
         if episode_done:
+            # Calculate episodic returns
+            N_STEP = 1000
+            ep_len = self.ep_lens[self.ep_pointer]
+            if not done:
+                # Extend the timesteps to calculate true discounted return
+                r_ext = []
+                for _ in range(N_STEP):
+                    action = algo.exploit(state)
+                    state, r, _, _ = env.step(action)
+                    r_ext.append(r)
+                rewards = np.concatenate([self.rewards[self.ep_pointer, :ep_len].cpu().flatten().numpy(), np.array(r_ext)])
+            else:
+                rewards = self.rewards[self.ep_pointer, :ep_len].flatten().cpu().numpy()
+
+            for i in range(self.ep_lens[self.ep_pointer]):
+                future_steps = min(N_STEP, self.ep_lens[self.ep_pointer] - i)
+                gammas = np.power(np.ones(future_steps) * 0.99, np.arange(future_steps))
+                r_discounted = gammas * rewards[i:i+future_steps]
+                self.returns[self.ep_pointer, i] = sum(r_discounted)
+
             self.ep_pointer = (self.ep_pointer + 1) % self.max_episodes
             self.cur_episodes = min(self.cur_episodes + 1, self.max_episodes)
             self.cur_size -= self.ep_lens[self.ep_pointer]
@@ -70,15 +92,13 @@ class EpisodicReplayBuffer:
         inds = np.random.randint(low=0, high=self.cur_size, size=batch_size)
         ep_inds, step_inds = self._inds_to_episodic(inds)
 
-        returns = self._get_returns(ep_inds, step_inds).to(self.device)
-
         return (
             self.states[ep_inds, step_inds],
             self.actions[ep_inds, step_inds],
             self.rewards[ep_inds, step_inds],
             self.dones[ep_inds, step_inds],
             self.states[ep_inds, step_inds + 1],
-            returns,
+            self.returns[ep_inds, step_inds],
             torch.tensor(step_inds).unsqueeze(1).float().to(self.device)
         )
 

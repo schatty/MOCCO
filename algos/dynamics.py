@@ -48,7 +48,7 @@ class ModelDynamics:
 
         alpha = 0.01
         beta = 1.0
-        gamma = 0.001
+        gamma = 1e-6
         loss_states = (next_states - next_states_pred).pow(2).mean()
         loss_reward = (rewards - reward_pred).pow(2).mean()
         loss_return = (returns - return_pred).pow(2).mean()
