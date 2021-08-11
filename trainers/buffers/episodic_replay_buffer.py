@@ -56,7 +56,7 @@ class EpisodicReplayBuffer:
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
         if episode_done:
             # Calculate episodic returns
-            N_STEP = 1000
+            N_STEP = 5
             ep_len = self.ep_lens[self.ep_pointer]
             if not done:
                 # Extend the timesteps to calculate true discounted return
