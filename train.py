@@ -8,6 +8,7 @@ from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
 from trainers.mf_trainer import ModelFreeTrainer
+from algos.dynamics import ModelDynamics
 from env import make_env
 
 
@@ -19,7 +20,7 @@ def run(args):
         device=args.device,
         seed = args.seed,
     )
-    wandb.init(project="AAAI-baselines", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
+    wandb.init(project="AAAI-dev", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
 
     env = make_env(args.env, args.seed)
     env_test = make_env(args.env, args.seed)
@@ -71,12 +72,17 @@ def run(args):
             wandb=wandb
         )
 
+    # Model-dynamics section
+    model_dynamics = ModelDynamics(state_shape=STATE_SHAPE, action_shape=ACTION_SHAPE,
+                                   device=args.device, wandb=wandb)
+
     trainer = ModelFreeTrainer(
         state_shape=STATE_SHAPE,
         action_shape=ACTION_SHAPE,
         env=env,
         env_test=env_test,
         algo=algo,
+        model_dynamics=model_dynamics,
         num_steps=args.num_steps,
         start_steps=args.start_steps,
         buffer_size=args.buffer_size,

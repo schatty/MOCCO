@@ -1,14 +1,16 @@
 import os
+import copy
 
 import numpy as np
 import wandb
+import torch
 
 from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 
 class ModelFreeTrainer:
 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6), gamma=0.99,
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, model_dynamics=None, buffer_size=int(3e6), gamma=0.99,
                  device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
                  save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
@@ -18,6 +20,7 @@ class ModelFreeTrainer:
             env: Enviornment object.
             env_test: Environment object for evaluation.
             algo: Codename for the algo (SAC).
+            model_dynamics: Model dynamics.
             buffer_size: Buffer size in transitions.
             gamma: Discount factor.
             device: Name of the device.
@@ -35,6 +38,7 @@ class ModelFreeTrainer:
         self.env = env
         self.env_test = env_test
         self.algo = algo
+        self.model_dynamics = model_dynamics
         self.gamma = gamma
         self.device = device
         self.log_dir = log_dir
@@ -61,6 +65,8 @@ class ModelFreeTrainer:
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
 
+        self.state_shape = state_shape
+        self.action_shape = action_shape
         self.batch_size = batch_size
         self.num_steps = num_steps
         self.start_steps = start_steps
@@ -71,14 +77,31 @@ class ModelFreeTrainer:
         ep_step = 0
         mean_reward = 0
         state = self.env.reset()
+        prev_state = None
 
         for env_step in range(self.num_steps + 1):
             ep_step += 1
+
+            # Guided exploration noise calculation
+            if prev_state is not None:
+                state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
+                next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
+                a_pi = self.algo.actor(state_t)
+                d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t)
+                noise = d_a.detach().cpu().numpy()
+            else:
+                noise = np.zeros(self.action_shape)
+
+            '''
             if env_step <= self.start_steps:
                 action = self.env.action_space.sample()
             else:
                 action = self.algo.explore(state)
+            '''
+
+            action = self.algo.explore(state, noise=noise)
             next_state, reward, done, _ = self.env.step(action)
+
 
             done_masked = done
             if ep_step == self.env._max_episode_steps:
@@ -87,13 +110,21 @@ class ModelFreeTrainer:
             self.buffer.append(state, action, reward, done_masked, episode_done=done)
             if done:
                 next_state = self.env.reset()
+                prev_state = None
                 ep_step = 0
+            else:
+                prev_state = copy.copy(state)
             state = next_state
 
+            # Policy update
             if len(self.buffer) < self.batch_size:
                 continue
             batch = self.buffer.sample(self.batch_size)
             self.algo.update(*batch)
+
+            # Model-dynamics update
+            s, a, r, d, s_ = batch
+            self.model_dynamics.update(s, a, s_)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
