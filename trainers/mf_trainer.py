@@ -8,6 +8,16 @@ import torch
 from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 
+from numpy import dot
+from numpy.linalg import norm
+
+def angular_sim(a, b):
+    cos_sim = dot(a, b)/(norm(a)*norm(b))
+    ang_dist = np.arccos(cos_sim)
+    ang_sim = 1 - ang_dist
+    return ang_sim
+
+
 class ModelFreeTrainer:
 
     def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, model_dynamics=None, buffer_size=int(3e6), gamma=0.99,
@@ -89,6 +99,15 @@ class ModelFreeTrainer:
                 a_pi = self.algo.actor(state_t)
                 d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t)
                 noise = d_a.detach().cpu().numpy()
+
+                #a2 = a_pi.detach().cpu().numpy().flatten()
+                #noise_scale = angular_sim(action, a2)
+                #noise *= noise_scale
+
+                # Log the noise
+                if env_step % 100 == 0:
+                    for i_noise in range(noise.shape[1]):
+                        wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "env_step": env_step})
             else:
                 noise = np.zeros(self.action_shape)
 

@@ -87,7 +87,8 @@ class TD3:
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
             else:
                 noise = torch.tensor(noise).float().to(self.device)
-                noise.clmap_(-0.1, 0.1)
+                noise.clamp_(-0.1, 0.1)
+
             action = self.actor(state) + noise
         return action.cpu().numpy()[0]
 
