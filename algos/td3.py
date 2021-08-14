@@ -132,7 +132,6 @@ class TD3:
             self.wandb.log({"algo/abs_q_err": (q1 - q_target).detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/critic_loss": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
-            self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
             
     def update_actor(self, states):
         actions = self.actor(states)
@@ -146,6 +145,7 @@ class TD3:
 
         if self.update_step % self.log_every == 0:
             self.wandb.log({"algo/loss_actor": loss_actor.item(), "update_step": self.update_step})
+            self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
 
     def exploit(self, state):
         state = torch.tensor(
