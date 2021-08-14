@@ -141,6 +141,7 @@ class TD3:
 
         self.optim_actor.zero_grad()
         loss_actor.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 100)
         self.optim_actor.step()
 
         if self.update_step % self.log_every == 0:
