@@ -82,6 +82,7 @@ def run(args):
         env=env,
         env_test=env_test,
         algo=algo,
+        noise_scale=args.noise_scale,
         model_dynamics=model_dynamics,
         num_steps=args.num_steps,
         start_steps=args.start_steps,
@@ -126,5 +127,6 @@ if __name__ == '__main__':
     p.add_argument("--stdout_log_every", type=int, default=int(100000))
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
+    p.add_argument("--noise_scale", type=float, default=1.0)
     args = p.parse_args()
     run(args)

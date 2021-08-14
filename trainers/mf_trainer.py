@@ -20,7 +20,7 @@ def angular_sim(a, b):
 
 class ModelFreeTrainer:
 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, model_dynamics=None, buffer_size=int(3e6), gamma=0.99,
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, noise_scale=None, model_dynamics=None, buffer_size=int(3e6), gamma=0.99,
                  device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
                  save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
@@ -56,6 +56,7 @@ class ModelFreeTrainer:
         self.visualize_every = visualize_every
         self.estimate_q_every = estimate_q_every
         self.stdout_log_every = stdout_log_every
+        self.noise_scale = noise_scale
 
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
@@ -103,6 +104,8 @@ class ModelFreeTrainer:
                 #a2 = a_pi.detach().cpu().numpy().flatten()
                 #noise_scale = angular_sim(action, a2)
                 #noise *= noise_scale
+
+                noise *= self.noise_scale
 
                 # Log the noise
                 if env_step % 100 == 0:
