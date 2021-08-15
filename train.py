@@ -58,6 +58,7 @@ def run(args):
             batch_size=args.batch_size,
             device=args.device,
             seed=args.seed,
+            noise_clamp=args.noise_clamp,
             wandb=wandb
         )
     elif args.algo == "DDPG":
@@ -128,5 +129,6 @@ if __name__ == '__main__':
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
     p.add_argument("--noise_scale", type=float, default=1.0)
+    p.add_argument("--noise_clamp", type=float, default=0.1)
     args = p.parse_args()
     run(args)

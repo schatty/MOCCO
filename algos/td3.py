@@ -33,7 +33,7 @@ class TD3:
 
     def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2,
                  expl_noise=0.1, noise_clip=0.5, policy_freq=2, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,
-                 max_action=1.0, target_update_coef=5e-3, log_every=5000, wandb=None):
+                 max_action=1.0, target_update_coef=5e-3, log_every=5000, noise_clamp=0.1, wandb=None):
         np.random.seed(seed)
         torch.manual_seed(seed)
 
@@ -51,6 +51,7 @@ class TD3:
         self.max_action = max_action
         self.discount = gamma
         self.log_every = log_every
+        self.noise_clamp = noise_clamp
 
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
@@ -87,7 +88,7 @@ class TD3:
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
             else:
                 noise = torch.tensor(noise).float().to(self.device)
-                noise.clamp_(-0.1, 0.1)
+                noise.clamp_(-self.noise_clamp, self.noise_clamp)
 
             action = self.actor(state) + noise
         return action.cpu().numpy()[0]

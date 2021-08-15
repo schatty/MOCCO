@@ -12,7 +12,7 @@ from numpy import dot
 from numpy.linalg import norm
 
 def angular_sim(a, b):
-    cos_sim = dot(a, b)/(norm(a)*norm(b))
+    cos_sim = dot(a, b) / ((norm(a)*norm(b)) + 1e-6)
     ang_dist = np.arccos(cos_sim)
     ang_sim = 1 - ang_dist
     return ang_sim
@@ -101,29 +101,26 @@ class ModelFreeTrainer:
                 d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t)
                 noise = d_a.detach().cpu().numpy()
 
-                #a2 = a_pi.detach().cpu().numpy().flatten()
-                #noise_scale = angular_sim(action, a2)
-                #noise *= noise_scale
+                a2 = a_pi.detach().cpu().numpy().flatten()
+                action_sim_scale = angular_sim(action, a2)
 
                 noise *= self.noise_scale
+                noise *= action_sim_scale
 
                 # Log the noise
                 if env_step % 100 == 0:
                     for i_noise in range(noise.shape[1]):
                         wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "env_step": env_step})
+                        wandb.log({"noise/action_sim_scale": action_sim_scale, "env_step": env_step})
             else:
                 noise = np.zeros(self.action_shape)
 
-            '''
             if env_step <= self.start_steps:
                 action = self.env.action_space.sample()
             else:
-                action = self.algo.explore(state)
-            '''
+                action = self.algo.explore(state, noise=noise)
 
-            action = self.algo.explore(state, noise=noise)
             next_state, reward, done, _ = self.env.step(action)
-
 
             done_masked = done
             if ep_step == self.env._max_episode_steps:
