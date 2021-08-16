@@ -98,7 +98,7 @@ class ModelFreeTrainer:
                 state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 a_pi = self.algo.actor(state_t)
-                d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t)
+                d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t, reward)
                 noise = d_a.detach().cpu().numpy()
 
                 a2 = a_pi.detach().cpu().numpy().flatten()
@@ -108,7 +108,7 @@ class ModelFreeTrainer:
                 noise *= action_sim_scale
 
                 # Log the noise
-                if env_step % 100 == 0:
+                if env_step % 1000 == 0:
                     for i_noise in range(noise.shape[1]):
                         wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "env_step": env_step})
                         wandb.log({"noise/action_sim_scale": action_sim_scale, "env_step": env_step})
@@ -143,7 +143,7 @@ class ModelFreeTrainer:
 
             # Model-dynamics update
             s, a, r, d, s_ = batch
-            self.model_dynamics.update(s, a, s_)
+            self.model_dynamics.update(s, a, s_, r)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()

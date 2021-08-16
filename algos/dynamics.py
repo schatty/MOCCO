@@ -15,7 +15,7 @@ class Dynamics(nn.Module):
 
         self.mlp = MLP(
             input_dim=state_shape[0] + action_shape[0],
-            output_dim=state_shape[0],
+            output_dim=state_shape[0] + 1,
             hidden_units=hidden_units,
             hidden_activation=hidden_activation,
         ).apply(initialize_weight)
@@ -42,25 +42,39 @@ class ModelDynamics:
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
 
-    def update(self, states, actions, next_states):
-        next_states_pred = self.dynamics(states, actions)
+    def update(self, states, actions, next_states, rewards):
+        model_pred = self.dynamics(states, actions)
+        next_states_pred, reward_pred = model_pred[:, :-1], model_pred[:, -1].unsqueeze(1)
 
-        loss = (next_states - next_states_pred).pow(2).mean()
+        alpha = 0.01
+        beta = 1.0
+        loss_states = (next_states - next_states_pred).pow(2).mean()
+        loss_reward = (rewards - reward_pred).pow(2).mean()
+        loss = alpha * loss_states + beta * loss_reward
 
         self.optim_dynamics.zero_grad()
         loss.backward()
         self.optim_dynamics.step()
 
         if self.update_step % self.log_every == 0:
+            self.wandb.log({"dynamics/loss_state": alpha * loss_states.item(), "update_step": self.update_step})
+            self.wandb.log({"dynamics/loss_reward": beta * loss_reward.item(), "update_step": self.update_step})
             self.wandb.log({"dynamics/loss": loss.item(), "update_step": self.update_step})
-            self.wandb.log({"dynamics/eval": loss.item(), "update_step": self.update_step})
+            self.wandb.log({"dynamics/eval": loss_states.item(), "update_step": self.update_step})
+            self.wandb.log({"dynamics/states_mean": states.mean().item(), "update_step": self.update_step})
+            self.wandb.log({"dynamics/reward_mean": rewards.mean().item(), "update_step": self.update_step})
 
         self.update_step += 1
 
-    def get_action_grad(self, states, actions, next_states):
-        next_states_pred = self.dynamics(states, actions)
+    def get_action_grad(self, states, actions, next_states, rewards):
+        model_pred = self.dynamics(states, actions)
+        next_states_pred, reward_pred = model_pred[:, :-1], model_pred[:, -1].unsqueeze(1)
 
-        loss = (next_states - next_states_pred).pow(2).mean()
+        alpha = 0.01
+        beta = 1.0
+        loss_states = (next_states - next_states_pred).pow(2).mean()
+        loss_reward = (rewards - reward_pred).pow(2).mean()
+        loss = alpha * loss_states + beta * loss_reward
 
         self.optim_dynamics.zero_grad()
         loss.backward(retain_graph=True)
