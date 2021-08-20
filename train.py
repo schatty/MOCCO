@@ -59,6 +59,7 @@ def run(args):
             device=args.device,
             seed=args.seed,
             noise_clamp=args.noise_clamp,
+            policy_freq=args.policy_freq,
             wandb=wandb
         )
     elif args.algo == "DDPG":
@@ -130,5 +131,6 @@ if __name__ == '__main__':
     p.add_argument("--estimate_q_every", type=int, default=0)
     p.add_argument("--noise_scale", type=float, default=1.0)
     p.add_argument("--noise_clamp", type=float, default=0.1)
+    p.add_argument("--policy_freq", type=float, default=2)
     args = p.parse_args()
     run(args)
