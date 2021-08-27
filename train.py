@@ -133,6 +133,6 @@ if __name__ == '__main__':
     p.add_argument("--noise_scale", type=float, default=1.0)
     p.add_argument("--noise_clamp", type=float, default=0.1)
     p.add_argument("--policy_freq", type=float, default=2)
-    p.add_argument("--actor_grad_clip", type=float, default=10)
+    p.add_argument("--actor_grad_clip", type=float, default=20)
     args = p.parse_args()
     run(args)
