@@ -98,20 +98,32 @@ class ModelFreeTrainer:
                 state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 a_pi = self.algo.actor(state_t)
-                d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t, reward)
-                noise = d_a.detach().cpu().numpy()
+                dyn_loss, d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t, reward)
+                d_a = d_a.detach() #.cpu().numpy()
+
+                d_a_dir = torch.where(d_a > 0, 1.0, -1.0)
+
+                noise = (torch.randn(self.algo.action_shape) * self.algo.max_action * self.algo.expl_noise).to(self.device)
+                noise.unsqueeze_(0)
 
                 a2 = a_pi.detach().cpu().numpy().flatten()
-                action_sim_scale = angular_sim(action, a2)
+                cos_sim_scale = angular_sim(action, a2)
 
-                noise *= self.noise_scale
-                noise *= action_sim_scale
+                noise *= d_a_dir
+
+                noise *= cos_sim_scale
+
+                # Setting magnitude of noise
+                noise_scale = 2 * torch.tanh(1000 * dyn_loss)
+
+                noise *= noise_scale
 
                 # Log the noise
                 if env_step % 1000 == 0:
                     for i_noise in range(noise.shape[1]):
                         wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "env_step": env_step})
-                        wandb.log({"noise/action_sim_scale": action_sim_scale, "env_step": env_step})
+                        wandb.log({"noise/cos_sim_scale": cos_sim_scale, "env_step": env_step})
+                        wandb.log({"noise/magnitude_scale": noise_scale, "env_step": env_step})
             else:
                 noise = np.zeros(self.action_shape)
 

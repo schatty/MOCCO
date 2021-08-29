@@ -81,4 +81,4 @@ class ModelDynamics:
 
         dx = torch.autograd.grad(loss, actions)[0]
 
-        return dx
+        return loss.detach(), dx
