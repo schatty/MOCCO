@@ -114,7 +114,7 @@ class ModelFreeTrainer:
                 noise *= cos_sim_scale
 
                 # Setting magnitude of noise
-                noise_scale = 2 * torch.tanh(1000 * dyn_loss)
+                noise_scale = 2 * torch.tanh(1500 * dyn_loss)
 
                 noise *= noise_scale
 
