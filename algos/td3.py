@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 
 from .nn import DoubleCritic, MLP
-from .utils import Clamp, initialize_weight, soft_update, disable_gradient
+from .utils import Clamp, initialize_weight, soft_update, disable_gradient, angular_sim
 
 
 class DeterministicPolicy(nn.Module):
@@ -95,23 +95,25 @@ class TD3:
             action = self.actor(state) + noise
         return action.cpu().numpy()[0]
 
-    def update(self, states, actions, rewards, dones, next_states):
+    def update(self, states, actions, rewards, dones, next_states, model_dynamics):
         self.update_step += 1
-        self.update_critic(states, actions, rewards, dones, next_states)
+        self.update_critic(states, actions, rewards, dones, next_states, model_dynamics)
 
         if self.update_step % self.policy_freq == 0:
             self.update_actor(states)
             soft_update(self.critic_target, self.critic, self.target_update_coef)
             soft_update(self.actor_target, self.actor, self.target_update_coef)
 
-    def update_critic(self, states, actions, rewards, dones, next_states):
+    def update_critic(self, states, actions, rewards, dones, next_states, model_dynamics):
         q1, q2 = self.critic(states, actions)
+
+        noise, cos_sim, magnitude_scale = self.get_guided_noise(states, actions, next_states, rewards, model_dynamics)
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
-            noise = (
-                    torch.randn_like(actions) * self.policy_noise
-            ).clamp(-self.noise_clip, self.noise_clip)
+            #noise = (
+            #        torch.randn_like(actions) * self.policy_noise
+            #).clamp(-self.noise_clip, self.noise_clip)
 
             next_actions = self.actor_target(next_states) + noise
             next_actions = next_actions.clamp(-self.max_action, self.max_action)
@@ -135,6 +137,12 @@ class TD3:
             self.wandb.log({"algo/abs_q_err": (q1 - q_target).detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/critic_loss": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
+            self.wandb.log({"algo/cos_sim": cos_sim.mean().cpu(), "update_step": self.update_step})
+            self.wandb.log({"algo/magnitude_scale": magnitude_scale.mean().cpu(), "update_step": self.update_step})
+            
+            for i_noise in range(noise.shape[1]):
+                self.wandb.log({f"algo/noise_a_{i_noise}": noise[0, i_noise], "env_step": self.update_step})
+            
             
     def update_actor(self, states):
         actions = self.actor(states)
@@ -157,3 +165,22 @@ class TD3:
         with torch.no_grad():
             action = self.actor(state)
         return action.cpu().numpy()[0]
+
+    def get_guided_noise(self, state, action, next_state, reward, model_dynamics):
+        a_pi = self.actor(state)
+        dyn_loss, d_a = model_dynamics.get_action_grad(state, a_pi, next_state, reward)
+
+        d_a = d_a.detach()
+        d_a_dir = torch.where(d_a > 0, 1.0, -1.0)
+
+        noise = (torch.randn(action.shape) * self.max_action * self.expl_noise).to(self.device)
+
+        a_pi = a_pi.detach()
+        cos_sim_scale = angular_sim(action, a_pi).to(self.device).unsqueeze_(1)
+        noise_scale = 2 * torch.tanh(1000 * dyn_loss)
+
+        noise *= d_a_dir
+        noise *= cos_sim_scale 
+        noise *= noise_scale
+
+        return noise, cos_sim_scale, noise_scale

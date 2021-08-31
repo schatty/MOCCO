@@ -35,3 +35,10 @@ def disable_gradient(network):
     """ Disable gradient calculations of the network. """
     for param in network.parameters():
         param.requires_grad = False
+
+
+def angular_sim(a, b):
+    cos_sim = torch.sum(a * b, dim=1) / ((torch.norm(a, dim=1) * torch.norm(b, dim=1)) + 1e-6)
+    ang_dist = torch.arccos(cos_sim) / 3.14
+    ang_sim = 1 - ang_dist
+    return ang_sim

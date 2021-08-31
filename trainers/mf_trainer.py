@@ -11,11 +11,6 @@ from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 from numpy import dot
 from numpy.linalg import norm
 
-def angular_sim(a, b):
-    cos_sim = dot(a, b) / ((norm(a)*norm(b)) + 1e-6)
-    ang_dist = np.arccos(cos_sim)
-    ang_sim = 1 - ang_dist
-    return ang_sim
 
 
 class ModelFreeTrainer:
@@ -97,33 +92,16 @@ class ModelFreeTrainer:
             if prev_state is not None:
                 state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
-                a_pi = self.algo.actor(state_t)
-                dyn_loss, d_a = self.model_dynamics.get_action_grad(state_t, a_pi, next_state_t, reward)
-                d_a = d_a.detach() #.cpu().numpy()
+                a_t = torch.tensor(action, dtype=torch.float, device=self.device).unsqueeze_(0)
 
-                d_a_dir = torch.where(d_a > 0, 1.0, -1.0)
-
-                noise = (torch.randn(self.algo.action_shape) * self.algo.max_action * self.algo.expl_noise).to(self.device)
-                noise.unsqueeze_(0)
-
-                a2 = a_pi.detach().cpu().numpy().flatten()
-                cos_sim_scale = angular_sim(action, a2)
-
-                noise *= d_a_dir
-
-                noise *= cos_sim_scale
-
-                # Setting magnitude of noise
-                noise_scale = 2 * torch.tanh(1000 * dyn_loss)
-
-                noise *= noise_scale
+                noise, cos_sim_scale, magnitude_scale = self.algo.get_guided_noise(state_t, a_t, next_state_t, reward, self.model_dynamics)
 
                 # Log the noise
                 if env_step % 1000 == 0:
                     for i_noise in range(noise.shape[1]):
                         wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "env_step": env_step})
-                        wandb.log({"noise/cos_sim_scale": cos_sim_scale, "env_step": env_step})
-                        wandb.log({"noise/magnitude_scale": noise_scale, "env_step": env_step})
+                    wandb.log({"noise/cos_sim_scale": cos_sim_scale.item(), "env_step": env_step})
+                    wandb.log({"noise/magnitude_scale": magnitude_scale.item(), "env_step": env_step})
             else:
                 noise = np.zeros(self.action_shape)
 
@@ -151,7 +129,7 @@ class ModelFreeTrainer:
             if len(self.buffer) < self.batch_size:
                 continue
             batch = self.buffer.sample(self.batch_size)
-            self.algo.update(*batch)
+            self.algo.update(*batch, self.model_dynamics)
 
             # Model-dynamics update
             s, a, r, d, s_ = batch
