@@ -82,7 +82,7 @@ class TD3:
 
         self.target_update_coef = target_update_coef
 
-    def explore(self, state, noise=None):
+    def explore(self, state, env_step=None):
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
         with torch.no_grad():
@@ -141,7 +141,7 @@ class TD3:
             self.wandb.log({"algo/magnitude_scale": magnitude_scale.mean().cpu(), "update_step": self.update_step})
             
             for i_noise in range(noise.shape[1]):
-                self.wandb.log({f"algo/noise_a_{i_noise}": noise[0, i_noise], "env_step": self.update_step})
+                self.wandb.log({f"algo/noise_a_{i_noise}": noise[0, i_noise], "update_step": self.update_step})
             
             
     def update_actor(self, states):

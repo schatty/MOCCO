@@ -5,7 +5,7 @@ from datetime import datetime
 import wandb
 
 from algos.sac import SAC
-from algos.td3 import TD3
+from algos.gembo import TD3
 from algos.ddpg import DDPG
 from trainers.mf_trainer import ModelFreeTrainer
 from algos.dynamics import ModelDynamics
