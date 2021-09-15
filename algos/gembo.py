@@ -33,7 +33,7 @@ class TD3:
 
     def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2,
                  expl_noise=0.1, noise_clip=0.5, policy_freq=2, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,
-                 actor_gradient_clip=None,
+                 actor_gradient_clip=None, tanh_arg=None,
                  max_action=1.0, target_update_coef=5e-3, log_every=5000, noise_clamp=0.1, wandb=None):
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -54,6 +54,7 @@ class TD3:
         self.log_every = log_every
         self.noise_clamp = noise_clamp
         self.actor_gradient_clip = actor_gradient_clip
+        self.tanh_arg = tanh_arg
 
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
@@ -82,7 +83,7 @@ class TD3:
 
         self.target_update_coef = target_update_coef
 
-    def explore(self, state, env_step=None):
+    def explore(self, state, noise=None):
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
         with torch.no_grad():
@@ -107,7 +108,8 @@ class TD3:
     def update_critic(self, states, actions, rewards, dones, next_states, model_dynamics):
         q1, q2 = self.critic(states, actions)
 
-        noise, cos_sim, magnitude_scale = self.get_guided_noise(states, actions, next_states, rewards, model_dynamics)
+        noise, cos_sim, magnitude_scale = self.get_guided_noise(states, actions, next_states, 
+                                                                rewards, model_dynamics, noise=self.policy_noise, tanh_arg=self.tanh_arg)
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
@@ -166,18 +168,21 @@ class TD3:
             action = self.actor(state)
         return action.cpu().numpy()[0]
 
-    def get_guided_noise(self, state, action, next_state, reward, model_dynamics):
+    def get_guided_noise(self, state, action, next_state, reward, model_dynamics, noise=None, tanh_arg=1000):
         a_pi = self.actor(state)
         dyn_loss, d_a = model_dynamics.get_action_grad(state, a_pi, next_state, reward)
 
         d_a = d_a.detach()
         d_a_dir = torch.where(d_a > 0, 1.0, -1.0)
 
-        noise = (torch.randn(action.shape) * self.max_action * self.expl_noise).to(self.device)
+        if noise is None:
+            noise = (torch.randn(action.shape) * self.max_action * self.expl_noise).to(self.device)
+        else:
+            noise = (torch.randn(action.shape) * self.max_action * noise).to(self.device)
 
         a_pi = a_pi.detach()
         cos_sim_scale = angular_sim(action, a_pi).to(self.device).unsqueeze_(1)
-        noise_scale = 2 * torch.tanh(1000 * dyn_loss)
+        noise_scale = 2 * torch.tanh(tanh_arg * dyn_loss)
 
         noise *= d_a_dir
         noise *= cos_sim_scale 

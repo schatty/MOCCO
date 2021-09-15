@@ -61,6 +61,7 @@ def run(args):
             noise_clamp=args.noise_clamp,
             policy_freq=args.policy_freq,
             actor_gradient_clip=args.actor_grad_clip,
+            tanh_arg=args.tanh_arg,
             wandb=wandb
         )
     elif args.algo == "DDPG":
@@ -134,5 +135,6 @@ if __name__ == '__main__':
     p.add_argument("--noise_clamp", type=float, default=1.0)
     p.add_argument("--policy_freq", type=float, default=2)
     p.add_argument("--actor_grad_clip", type=float, default=20)
+    p.add_argument("--tanh_arg", type=float, default=1000)
     args = p.parse_args()
     run(args)
