@@ -94,7 +94,7 @@ class ModelFreeTrainer:
                 next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
                 a_t = torch.tensor(action, dtype=torch.float, device=self.device).unsqueeze_(0)
 
-                noise, cos_sim_scale, magnitude_scale = self.algo.get_guided_noise(state_t, a_t, next_state_t, reward, self.model_dynamics)
+                noise, cos_sim_scale, magnitude_scale = self.algo.get_guided_noise(state_t, a_t, next_state_t, reward, self.model_dynamics, tanh_arg=self.algo.tanh_exploration_arg)
 
                 # Log the noise
                 if env_step % 1000 == 0:

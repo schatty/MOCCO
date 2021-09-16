@@ -33,7 +33,7 @@ class TD3:
 
     def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2,
                  expl_noise=0.1, noise_clip=0.5, policy_freq=2, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,
-                 actor_gradient_clip=None, tanh_arg=None,
+                 actor_gradient_clip=None, tanh_exploration_arg=None, tanh_q_arg=None,
                  max_action=1.0, target_update_coef=5e-3, log_every=5000, noise_clamp=0.1, wandb=None):
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -54,7 +54,8 @@ class TD3:
         self.log_every = log_every
         self.noise_clamp = noise_clamp
         self.actor_gradient_clip = actor_gradient_clip
-        self.tanh_arg = tanh_arg
+        self.tanh_exploration_arg = tanh_exploration_arg
+        self.tanh_q_arg = tanh_q_arg
 
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
@@ -109,7 +110,7 @@ class TD3:
         q1, q2 = self.critic(states, actions)
 
         noise, cos_sim, magnitude_scale = self.get_guided_noise(states, actions, next_states, 
-                                                                rewards, model_dynamics, noise=self.policy_noise, tanh_arg=self.tanh_arg)
+                                                                rewards, model_dynamics, noise=self.policy_noise, tanh_arg=self.tanh_q_arg)
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
