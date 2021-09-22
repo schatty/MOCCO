@@ -85,6 +85,12 @@ class TD3:
         with torch.no_grad():
             noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
             action = self.actor(state) + noise
+
+        # Log the noise
+        if self.update_step % self.log_every == 0:
+            for i_noise in range(noise.shape[0]):
+                self.wandb.log({f"noise/a_{i_noise}": noise[i_noise], "update_step": self.update_step})
+            
         return action.cpu().numpy()[0]
 
     def update(self, states, actions, rewards, dones, next_states):
@@ -128,6 +134,11 @@ class TD3:
             self.wandb.log({"algo/critic_loss": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
             self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
+
+            # Off-policy noise
+            for i_noise in range(3):
+                self.wandb.log({f"algo/noise_critic_{i_noise}": noise[0, i_noise].item(), "update_step": self.update_step})
+
             
     def update_actor(self, states):
         actions = self.actor(states)

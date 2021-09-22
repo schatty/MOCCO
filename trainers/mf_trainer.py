@@ -1,4 +1,5 @@
 import os
+from abc import abstractmethod
 
 import numpy as np
 import wandb
@@ -67,60 +68,9 @@ class ModelFreeTrainer:
         self.eval_interval = eval_interval
         self.num_eval_episodes = num_eval_episodes
 
+    @abstractmethod
     def train(self):
-        ep_step = 0
-        mean_reward = 0
-        state = self.env.reset()
-
-        for env_step in range(self.num_steps + 1):
-            ep_step += 1
-            if env_step <= self.start_steps:
-                action = self.env.action_space.sample()
-            else:
-                action = self.algo.explore(state)
-            next_state, reward, done, _ = self.env.step(action)
-
-            done_masked = done
-            if ep_step == self.env._max_episode_steps:
-                done_masked = False
-
-            self.buffer.append(state, action, reward, done_masked, episode_done=done)
-            if done:
-                next_state = self.env.reset()
-                ep_step = 0
-            state = next_state
-
-            if len(self.buffer) < self.batch_size:
-                continue
-            batch = self.buffer.sample(self.batch_size)
-            self.algo.update(*batch)
-
-            if env_step % self.eval_interval == 0:
-                mean_reward = self.evaluate()
-                wandb.log({"trainer/ep_reward": mean_reward, "env_step": env_step})
-                wandb.log({"trainer/avg_reward": batch[2].mean(), "env_step": env_step})
-                wandb.log({"trainer/buffer_transitions": len(self.buffer), "env_step": env_step})
-                wandb.log({"trainer/buffer_episodes": self.buffer.num_episodes, "env_step": env_step})
-                wandb.log({"trainer/buffer_last_ep_len": self.buffer.get_last_ep_len(), "env_step": env_step})
-
-            if self.visualize_every > 0 and env_step % self.visualize_every == 0:
-                imgs = self.visualize_policy()
-                if imgs is not None:
-                    wandb.log({"video": wandb.Video(imgs, fps=25, format="gif"), "env_step": env_step})
-
-            if self.save_buffer_every > 0 and env_step % self.save_buffer_every == 0:
-                self.buffer.save(f"{self.log_dir}/buffers/buffer_step_{env_step}.pickle")
-
-            if self.estimate_q_every > 0 and env_step % self.estimate_q_every == 0:
-                q_est = self.estimate_true_q()
-                q_critic = self.estimate_critic_q()
-                if q_est is not None:
-                    wandb.log({"trainer/Q-estimate": q_est, "env_step": env_step})
-                    wandb.log({"trainer/Q-critic": q_critic, "env_step": env_step})
-
-            if env_step % self.stdout_log_every == 0:
-                perc = int(env_step / self.num_steps * 100)
-                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
+        pass
 
     def evaluate(self):
         returns = []

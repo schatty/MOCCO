@@ -7,7 +7,7 @@ import wandb
 from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
-from trainers.mf_trainer import ModelFreeTrainer
+from trainers.td3_trainer import TD3Trainer
 from env import make_env
 
 
@@ -19,7 +19,7 @@ def run(args):
         device=args.device,
         seed = args.seed,
     )
-    wandb.init(project="AAAI-baselines", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
+    wandb.init(project="GEMBO", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
 
     env = make_env(args.env, args.seed)
     env_test = make_env(args.env, args.seed)
@@ -49,6 +49,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "TD3":
+        trainer_class = TD3Trainer
         algo = TD3(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -60,6 +61,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "DDPG":
+        trainer_class = TD3Trainer
         algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -71,7 +73,7 @@ def run(args):
             wandb=wandb
         )
 
-    trainer = ModelFreeTrainer(
+    trainer = trainer_class(
         state_shape=STATE_SHAPE,
         action_shape=ACTION_SHAPE,
         env=env,
