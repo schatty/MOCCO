@@ -56,6 +56,8 @@ def run(args):
             target_update_coef=args.tau,
             gamma=args.gamma,
             batch_size=args.batch_size,
+            expl_noise=args.expl_noise,
+            policy_noise=args.policy_noise,
             device=args.device,
             seed=args.seed,
             wandb=wandb
@@ -112,6 +114,8 @@ if __name__ == '__main__':
     p.add_argument('--tune_alpha', action="store_true")
     p.add_argument('--buffer_size', type=int, default=int(3e6))
     p.add_argument('--batch_size', type=int, default=256)
+    p.add_argument('--expl_noise', type=float, default=0.1)
+    p.add_argument('--policy_noise', type=float, default=0.2)
     p.add_argument('--device', type=str, default="cuda:0")
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--start_steps', type=int, default=int(10e3))
