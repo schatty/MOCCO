@@ -2,16 +2,16 @@ import os
 from abc import abstractmethod
 
 import numpy as np
-import wandb
 
 from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 
 class ModelFreeTrainer:
 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6), gamma=0.99,
-                 device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
-                 save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6),
+                 gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(1e3), batch_size=128,
+                 eval_interval=int(2e3), num_eval_episodes=10, save_buffer_every=0, visualize_every=0,
+                 estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
         Args:
             state_shape: Shape of the state.
@@ -119,8 +119,8 @@ class ModelFreeTrainer:
                 states, _, rewards, _, _ = self.buffer.sample(1)
                 state, reward = states[0].cpu().numpy(), rewards[0].cpu().numpy()
 
-                qpos = state[:self.env_test.model.nq-1]
-                qvel = state[self.env_test.model.nq-1:]
+                qpos = state[:self.env_test.model.nq - 1]
+                qvel = state[self.env_test.model.nq - 1:]
                 qpos = np.concatenate([[0], qpos])
 
                 self.env_test.set_state(qpos, qvel)
@@ -136,12 +136,12 @@ class ModelFreeTrainer:
                         break
                 qs.append(q)
 
-            return np.mean(qs) 
+            return np.mean(qs)
         except Exception as e:
             print(f"Failed to estimate Q-value: {e}")
             return None
 
     def estimate_critic_q(self, num_samples=100):
-       states, actions, _, _, _ = self.buffer.sample(num_samples)
-       q, _ = self.algo.critic(states, actions)  
-       return q.detach().mean().item()
+        states, actions, _, _, _ = self.buffer.sample(num_samples)
+        q, _ = self.algo.critic(states, actions)  
+        return q.detach().mean().item()

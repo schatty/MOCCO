@@ -107,9 +107,7 @@ class TD3:
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
-            noise = (
-                    torch.randn_like(actions) * self.policy_noise
-            ).clamp(-self.noise_clip, self.noise_clip)
+            noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 
             next_actions = self.actor_target(next_states) + noise
             next_actions = next_actions.clamp(-self.max_action, self.max_action)
@@ -137,9 +135,9 @@ class TD3:
 
             # Off-policy noise
             for i_noise in range(3):
-                self.wandb.log({f"algo/noise_critic_{i_noise}": noise[0, i_noise].item(), "update_step": self.update_step})
-
-            
+                self.wandb.log({f"algo/noise_critic_{i_noise}": noise[0, i_noise].item(),
+                                "update_step": self.update_step})
+ 
     def update_actor(self, states):
         actions = self.actor(states)
         qs1 = self.critic.Q1(states, actions)

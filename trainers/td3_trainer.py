@@ -3,11 +3,11 @@ import wandb
 from .mf_trainer import ModelFreeTrainer
 
 
-class TD3Trainer(ModelFreeTrainer):
- 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6), gamma=0.99,
-                 device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
-                 save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
+class TD3Trainer(ModelFreeTrainer): 
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6),
+                 gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(1e3), batch_size=128,
+                 eval_interval=int(2e3), num_eval_episodes=10, save_buffer_every=0, visualize_every=0,
+                 estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
         Args:
             state_shape: Shape of the state.
@@ -29,9 +29,12 @@ class TD3Trainer(ModelFreeTrainer):
             log_dir: Path to the log directory.
             wandb: W&B logger instance.
         """
-        super().__init__(state_shape=state_shape, action_shape=action_shape, env=env, env_test=env_test, algo=algo, buffer_size=buffer_size, gamma=gamma,
-                 device=device,  num_steps=num_steps, start_steps=start_steps, batch_size=batch_size, eval_interval=eval_interval, num_eval_episodes=num_eval_episodes,
-                 save_buffer_every=save_buffer_every, visualize_every=visualize_every, estimate_q_every=estimate_q_every, stdout_log_every=stdout_log_every, seed=seed, log_dir=log_dir, wandb=wandb)
+        super().__init__(state_shape=state_shape, action_shape=action_shape, env=env, env_test=env_test, algo=algo,
+                         buffer_size=buffer_size, gamma=gamma, device=device, num_steps=num_steps,
+                         start_steps=start_steps, batch_size=batch_size, eval_interval=eval_interval,
+                         num_eval_episodes=num_eval_episodes, save_buffer_every=save_buffer_every,
+                         visualize_every=visualize_every, estimate_q_every=estimate_q_every,
+                         stdout_log_every=stdout_log_every, seed=seed, log_dir=log_dir, wandb=wandb)
 
     def train(self):
         ep_step = 0
@@ -85,5 +88,6 @@ class TD3Trainer(ModelFreeTrainer):
                     wandb.log({"trainer/Q-critic": q_critic, "env_step": env_step})
 
             if env_step % self.stdout_log_every == 0:
-                perc = int(env_step / self.num_steps * 100)
-                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
+                prog = int(env_step / self.num_steps * 100)
+                print(f"Env step {env_step:8d} ({prog:2d}%) "
+                      "Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
