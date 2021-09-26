@@ -7,7 +7,10 @@ import wandb
 from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
+from algos.gembo import GEMBO
 from trainers.td3_trainer import TD3Trainer
+from trainers.gembo_trainer import GEMBOTrainer
+from algos.dynamics import ModelDynamics
 from env import make_env
 
 
@@ -31,6 +34,31 @@ def run(args):
 
     STATE_SHAPE = env.observation_space.shape
     ACTION_SHAPE = env.action_space.shape
+
+    trainer_args = {
+        "state_shape": STATE_SHAPE,
+        "action_shape": ACTION_SHAPE,
+        "env": env,
+        "env_test": env_test,
+        "num_steps": args.num_steps,
+        "start_steps": args.start_steps,
+        "buffer_size": args.buffer_size,
+        "batch_size": args.batch_size,
+        "gamma": args.gamma,
+        "eval_interval": args.eval_interval,
+        "device": args.device,
+        "log_dir": log_dir,
+        "seed": args.seed,
+        "save_buffer_every": args.save_buffer_every,
+        "visualize_every": args.visualize_every,
+        "estimate_q_every": args.estimate_q_every,
+        "stdout_log_every": args.stdout_log_every,
+        "wandb": wandb
+    }
+
+    # Model-dynamics section
+    model_dynamics = ModelDynamics(state_shape=STATE_SHAPE, action_shape=ACTION_SHAPE,
+                                   device=args.device, wandb=wandb)
 
     if args.algo == "SAC":
         algo = SAC(
@@ -74,28 +102,24 @@ def run(args):
             seed=args.seed,
             wandb=wandb
         )
+    elif args.algo == "GEMBO":
+        trainer_class = GEMBOTrainer
+        trainer_args.update({"model_dynamics": model_dynamics})
+        algo = GEMBO(
+            state_shape=STATE_SHAPE,
+            action_shape=ACTION_SHAPE,
+            target_update_coef=args.tau,
+            gamma=args.gamma,
+            batch_size=args.batch_size,
+            expl_noise=args.expl_noise,
+            policy_noise=args.policy_noise,
+            device=args.device,
+            seed=args.seed,
+            wandb=wandb
+        )
 
-    trainer = trainer_class(
-        state_shape=STATE_SHAPE,
-        action_shape=ACTION_SHAPE,
-        env=env,
-        env_test=env_test,
-        algo=algo,
-        num_steps=args.num_steps,
-        start_steps=args.start_steps,
-        buffer_size=args.buffer_size,
-        batch_size=args.batch_size,
-        gamma=args.gamma,
-        eval_interval=args.eval_interval,
-        device=args.device,
-        log_dir=log_dir,
-        seed=args.seed,
-        save_buffer_every=args.save_buffer_every,
-        visualize_every=args.visualize_every,
-        estimate_q_every=args.estimate_q_every,
-        stdout_log_every=args.stdout_log_every,
-        wandb=wandb
-    )
+    trainer_args.update({"algo": algo}) 
+    trainer = trainer_class(**trainer_args)
 
     trainer.train()
 
@@ -103,7 +127,7 @@ def run(args):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('--env', type=str, default='HalfCheetah-v3')
-    p.add_argument('--algo', type=str, default='SAC')
+    p.add_argument('--algo', type=str, default='GEMBO')
     p.add_argument('--num_steps', type=int, default=int(1e6))
     p.add_argument('--gamma', type=float, default=0.99)
     p.add_argument('--tau', type=float, default=5e-3)

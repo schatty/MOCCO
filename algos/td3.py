@@ -79,11 +79,12 @@ class TD3:
 
         self.target_update_coef = target_update_coef
 
-    def explore(self, state):
+    def explore(self, state, noise=None):
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
         with torch.no_grad():
-            noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
+            if noise is None:
+                noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
             action = self.actor(state) + noise
 
         # Log the noise
