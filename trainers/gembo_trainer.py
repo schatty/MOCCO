@@ -77,8 +77,8 @@ class GEMBOTrainer(ModelFreeTrainer):
                 next_state = self.env.reset()
                 prev_state = None
                 ep_step = 0
-
-            prev_state = state.copy()
+            else:
+                prev_state = state.copy()
             state = next_state
 
             if len(self.buffer) < self.batch_size:
@@ -112,4 +112,4 @@ class GEMBOTrainer(ModelFreeTrainer):
             if env_step % self.stdout_log_every == 0:
                 prog = int(env_step / self.num_steps * 100)
                 print(f"Env step {env_step:8d} ({prog:2d}%) "
-                      "Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
+                      f"Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")

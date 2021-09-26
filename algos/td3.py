@@ -85,12 +85,13 @@ class TD3:
         with torch.no_grad():
             if noise is None:
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
+                noise.unsqueeze_(0)
             action = self.actor(state) + noise
 
         # Log the noise
         if self.update_step % self.log_every == 0:
-            for i_noise in range(noise.shape[0]):
-                self.wandb.log({f"noise/a_{i_noise}": noise[i_noise], "update_step": self.update_step})
+            for i_noise in range(noise.shape[1]):
+                self.wandb.log({f"noise/a_{i_noise}": noise[0, i_noise], "update_step": self.update_step})
             
         return action.cpu().numpy()[0]
 
