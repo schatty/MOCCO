@@ -86,6 +86,10 @@ class GEMBOTrainer(ModelFreeTrainer):
             batch = self.buffer.sample(self.batch_size)
             self.algo.update(*batch)
 
+            # Model-dynamics update
+            s, a, r, d, s_ = batch
+            self.model_dynamics.update(s, a, s_, r)
+
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
                 wandb.log({"trainer/ep_reward": mean_reward, "env_step": env_step})
