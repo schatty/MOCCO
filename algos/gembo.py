@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from copy import copy
 
 from .td3 import TD3
 
@@ -15,10 +16,25 @@ class GEMBO(TD3):
                          log_every=log_every, wandb=wandb)
 
         self.norm_noise = np.sqrt(action_shape[0]) * expl_noise
+        self.da_std_buf = []
 
     def get_guided_noise(self, state, next_state, reward, model_dynamics):
         a_pi = self.actor(state)
         d_a = model_dynamics.get_action_grad(state, a_pi, next_state, reward).detach()
         d_a_norm = torch.linalg.norm(d_a)
         noise = d_a / d_a_norm * self.norm_noise
+
+        self.da_std_buf.append(d_a.cpu().numpy().flatten())
+        if len(self.da_std_buf) > 1000:
+            self.da_std_buf.pop(0)
+
+        # Logging
+        if self.update_step % 100 == 0:
+            #print("shape of numpy std buf: ", np.array(self.da_std_buf).shape)
+            for i in range(d_a.shape[1]):
+                self.wandb.log({f"noise/d_a_{i}_magnitude": d_a[:, i].abs().mean(), "update_step": self.update_step})
+                self.wandb.log({f"noise/d_a_{i}_std": np.array(self.da_std_buf)[:, i].std(),
+                               "update_step": self.update_step})
+                self.wandb.log({f"noise/d_a{i}_mag_smoothed": np.abs(np.array(self.da_std_buf)[:, i]).mean()})
+
         return noise

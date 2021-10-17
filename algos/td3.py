@@ -136,7 +136,7 @@ class TD3:
             self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
 
             # Off-policy noise
-            for i_noise in range(3):
+            for i_noise in range(2):
                 self.wandb.log({f"algo/noise_critic_{i_noise}": noise[0, i_noise].item(),
                                 "update_step": self.update_step})
  
