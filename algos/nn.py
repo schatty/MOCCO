@@ -55,6 +55,46 @@ class DoubleCritic(nn.Module):
         return self.q1(x)
 
 
+class DynamicsCritic(nn.Module):
+
+    def __init__(self, state_shape, action_shape, hidden_units=(256, 256),
+                 hidden_activation=nn.ReLU(inplace=True)):
+        super().__init__()
+
+        self.q = MLP(
+            input_dim=state_shape[0] + action_shape[0],
+            output_dim=1,
+            hidden_units=hidden_units,
+            hidden_activation=hidden_activation
+        )
+
+        self.s0 = MLP(
+            input_dim=state_shape[0] + action_shape[0],
+            output_dim=state_shape[0],
+            hidden_units=hidden_units,
+            hidden_activation=hidden_activation
+        )
+
+        self.s1 = MLP(
+            input_dim=state_shape[0] + action_shape[0],
+            output_dim=state_shape[0],
+            hidden_units=hidden_units,
+            hidden_activation=hidden_activation
+        )
+
+        self.s2 = MLP(
+            input_dim=state_shape[0] + action_shape[0],
+            output_dim=state_shape[0],
+            hidden_units=hidden_units,
+            hidden_activation=hidden_activation
+        )
+
+    def forward(self, states, actions):
+        x = torch.cat([states, actions], dim=-1)
+        return self.q(x), self.s0(x), self.s1(x), self.s2(x)
+
+    
+
 class MLP(nn.Module):
     
     def __init__(self, input_dim, output_dim, hidden_units=(64, 64),

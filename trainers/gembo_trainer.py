@@ -55,15 +55,16 @@ class GEMBOTrainer(ModelFreeTrainer):
                 action = self.env.action_space.sample()
             else:
                 # Guided noise calculation
-                if prev_state is not None:
-                    state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
-                    next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
-                    # a_t = torch.tensor(action, dtype=torch.float, device=self.device).unsqueeze_(0)
+                #if prev_state is not None:
+                #    state_t = torch.tensor(prev_state, dtype=torch.float, device=self.device).unsqueeze_(0)
+                #    next_state_t = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
+                #    # a_t = torch.tensor(action, dtype=torch.float, device=self.device).unsqueeze_(0)
 
-                    noise = self.algo.get_guided_noise(state_t, next_state_t, reward, self.model_dynamics)
-                else:
-                    noise = None
+                #    noise = self.algo.get_guided_noise(state_t, next_state_t, reward, self.model_dynamics)
+                #else:
+                #    noise = None
 
+                noise = None
                 action = self.algo.explore(state, noise=noise)
 
             next_state, reward, done, _ = self.env.step(action)
@@ -87,8 +88,8 @@ class GEMBOTrainer(ModelFreeTrainer):
             self.algo.update(*batch)
 
             # Model-dynamics update
-            s, a, r, d, s_ = batch
-            self.model_dynamics.update(s, a, s_, r)
+            #s, a, r, d, s_ = batch
+            #self.model_dynamics.update(s, a, s_, r)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
