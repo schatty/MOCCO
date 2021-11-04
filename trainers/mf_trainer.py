@@ -122,7 +122,7 @@ class ModelFreeTrainer:
             if env_step % self.stdout_log_every == 0:
                 perc = int(env_step / self.num_steps * 100)
                 print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f}"
-                      "Ep Reward {mean_reward:10.3f}")
+                      f"Ep Reward {mean_reward:10.3f}")
 
     def evaluate(self):
         returns = []
