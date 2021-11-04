@@ -13,13 +13,13 @@ from env import make_env
 
 def run(args):
     config = dict(
-        env = args.env,
-        num_steps = args.num_steps,
-        algo = args.algo,
+        env=args.env,
+        num_steps=args.num_steps,
+        algo=args.algo,
         device=args.device,
-        seed = args.seed,
+        seed=args.seed,
     )
-    wandb.init(project="AAAI-baselines", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
+    wandb.init(project="GEMBO", config=config, group=f"{args.env}-{args.algo}-{args.exp_name}")
 
     env = make_env(args.env, args.seed)
     env_test = make_env(args.env, args.seed)

@@ -8,9 +8,10 @@ from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 class ModelFreeTrainer:
 
-    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6), gamma=0.99,
-                 device=None,  num_steps=int(1e6), start_steps=int(1e3), batch_size=128, eval_interval=int(2e3), num_eval_episodes=10,
-                 save_buffer_every=0, visualize_every=0, estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
+    def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6),
+                 gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(1e3), batch_size=128,
+                 eval_interval=int(2e3), num_eval_episodes=10, save_buffer_every=0, visualize_every=0,
+                 estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
         Args:
             state_shape: Shape of the state.
@@ -120,7 +121,8 @@ class ModelFreeTrainer:
 
             if env_step % self.stdout_log_every == 0:
                 perc = int(env_step / self.num_steps * 100)
-                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f} Ep Reward {mean_reward:10.3f}")
+                print(f"Env step {env_step:8d} ({perc:2d}%) Avg Reward {batch[2].mean():10.3f}"
+                      "Ep Reward {mean_reward:10.3f}")
 
     def evaluate(self):
         returns = []
@@ -146,7 +148,7 @@ class ModelFreeTrainer:
             done = False
             while not done:
                 img = self.env_test.render(mode="rgb_array")
-                img = np.moveaxis(img, (0, 1, 2), (1, 2, 0))  
+                img = np.moveaxis(img, (0, 1, 2), (1, 2, 0))
                 img = np.expand_dims(img, 0)
                 imgs.append(img)
                 action = self.algo.exploit(state)
@@ -155,8 +157,8 @@ class ModelFreeTrainer:
         except Exception as e:
             print(f"Failed to visualize a policy: {e}")
             return None
-            
-    def estimate_true_q(self, eval_episodes=100):
+
+    def estimate_true_q(self, eval_episodes=10):
         """Estimates true Q-value via launching given policy from sampled state until
         the end of an episode. """
 
@@ -169,8 +171,8 @@ class ModelFreeTrainer:
                 states, _, rewards, _, _ = self.buffer.sample(1)
                 state, reward = states[0].cpu().numpy(), rewards[0].cpu().numpy()
 
-                qpos = state[:self.env_test.model.nq-1]
-                qvel = state[self.env_test.model.nq-1:]
+                qpos = state[:self.env_test.model.nq - 1]
+                qvel = state[self.env_test.model.nq - 1:]
                 qpos = np.concatenate([[0], qpos])
 
                 self.env_test.set_state(qpos, qvel)
@@ -181,17 +183,19 @@ class ModelFreeTrainer:
                     action = self.algo.exploit(np.array(state))
                     state, r, d, _ = self.env_test.step(action)
                     q += r * self.gamma ** s_i
-                    s_i += 1
-                    if d:
+                    if d or s_i == self.env_test._max_episode_steps:
                         break
+                    s_i += 1
                 qs.append(q)
 
-            return np.mean(qs) 
+            return np.mean(qs)
         except Exception as e:
             print(f"Failed to estimate Q-value: {e}")
             return None
 
     def estimate_critic_q(self, num_samples=100):
-       states, actions, _, _, _ = self.buffer.sample(num_samples)
-       q, _ = self.algo.critic(states, actions)  
-       return q.detach().mean().item()
+        states, actions, _, _, _ = self.buffer.sample(num_samples)
+        q = self.algo.critic(states, actions)
+        if isinstance(q, (list, tuple)):
+            q = q[0]
+        return q.detach().mean().item()
