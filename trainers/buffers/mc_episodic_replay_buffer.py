@@ -1,11 +1,12 @@
 import os
 
 import pickle
+from re import S
 import numpy as np
 import torch
 
 
-class EpisodicReplayBuffer:
+class MCEpisodicReplayBuffer:
 
     def __init__(self, buffer_size, state_shape, action_shape, device, gamma, max_episode_len=1000, dtype=torch.float):
         """
@@ -34,9 +35,10 @@ class EpisodicReplayBuffer:
         self.rewards = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.dones = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.states = torch.empty((self.max_episodes, max_episode_len + 1, *state_shape), dtype=dtype, device=device)
+        self.qs = torch.empty((self.max_episodes, max_episode_len, 1), dtype=dtype, device=device)
         self.ep_lens = [0] * self.max_episodes
 
-    def append(self, state, action, reward, done, episode_done=None):
+    def append(self, state, action, reward, done, episode_done=None, env=None, policy=None):
         """
         Args:
             state: state.
@@ -53,13 +55,39 @@ class EpisodicReplayBuffer:
         self.ep_lens[self.ep_pointer] += 1
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
         if episode_done:
+            self.qs[self.ep_pointer, :self.ep_lens[self.ep_pointer], :] = self._calc_q(self.ep_pointer, state, done,
+                                                                                    env, policy).unsqueeze(1)
             self.ep_pointer = (self.ep_pointer + 1) % self.max_episodes
             self.cur_episodes = min(self.cur_episodes + 1, self.max_episodes)
             self.cur_size -= self.ep_lens[self.ep_pointer]
             self.ep_lens[self.ep_pointer] = 0
 
+    def _calc_q(self, ep_i, state, done, env, policy):
+        n = self.ep_lens[ep_i]
+        if not done:
+            rewards_add = []
+            s = state
+            # Here we have an assumtion that if an agent reaches its maximum
+            # episode length without done=True from natural reasons, it won't have
+            # same done=True for the next max_len steps...
+            for i in range(self.max_episode_len):
+                a = policy.exploit(s)
+                s, r, d, _ = env.step(a)
+                rewards_add.append(r)
+            rewards = torch.cat((self.rewards[self.ep_pointer].flatten().cpu(), torch.tensor(rewards_add)))
+        else:
+            rewards = self.rewards[self.ep_pointer, :n].flatten().cpu()
+        discounts = torch.pow(torch.ones(n) * self.gamma, torch.arange(0, n))
+
+        qs = []
+        for i in range(n):
+            j = min(len(rewards), i + n)
+            # print(rewards.shape, discounts.shape, len(rewards[i:j]), i, j)
+            qs.append(torch.sum(rewards[i:j] * discounts[:j - i]))
+        return torch.tensor(qs).float().to(self.device)
+
     def _inds_to_episodic(self, inds):
-        start_inds = np.cumsum([0] + self.ep_lens[:self.cur_episodes - 1])        
+        start_inds = np.cumsum([0] + self.ep_lens[:self.cur_episodes - 1])
         end_inds = start_inds + np.array(self.ep_lens[:self.cur_episodes])
         ep_inds = np.argmin(inds.reshape(-1, 1) >= np.tile(end_inds, (len(inds), 1)), axis=1)
         step_inds = inds - start_inds[ep_inds]
@@ -73,36 +101,8 @@ class EpisodicReplayBuffer:
         return (
             self.states[ep_inds, step_inds],
             self.actions[ep_inds, step_inds],
-            self.rewards[ep_inds, step_inds],
-            self.dones[ep_inds, step_inds],
-            self.states[ep_inds, step_inds + 1]
+            self.qs[ep_inds, step_inds],
         )
-
-    def save(self, path: str):
-        """
-        Args:
-            path: Path to pickle file.
-        """
-        dirname = os.path.dirname(path)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-        data = {
-            "states": self.states.cpu(), 
-            "actions": self.actions.cpu(),
-            "rewards": self.rewards.cpu(),
-            "dones": self.dones.cpu(),
-            "ep_lens": self.ep_lens
-        }
-        try:
-            with open(path, "wb") as f:
-                pickle.dump(data, f)
-            print(f"Replay buffer saved to {path}")
-        except Exception as e:
-            print(f"Failed to save replay buffer: {e}")
-
-    def __len__(self):
-        return self.cur_size
 
     @property
     def num_episodes(self):
