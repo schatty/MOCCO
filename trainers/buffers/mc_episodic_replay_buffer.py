@@ -56,7 +56,7 @@ class MCEpisodicReplayBuffer:
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
         if episode_done:
             self.qs[self.ep_pointer, :self.ep_lens[self.ep_pointer], :] = self._calc_q(self.ep_pointer, state, done,
-                                                                                    env, policy).unsqueeze(1)
+                                                                                       env, policy).unsqueeze(1)
             self.ep_pointer = (self.ep_pointer + 1) % self.max_episodes
             self.cur_episodes = min(self.cur_episodes + 1, self.max_episodes)
             self.cur_size -= self.ep_lens[self.ep_pointer]

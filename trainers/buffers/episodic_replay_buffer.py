@@ -36,6 +36,9 @@ class EpisodicReplayBuffer:
         self.states = torch.empty((self.max_episodes, max_episode_len + 1, *state_shape), dtype=dtype, device=device)
         self.ep_lens = [0] * self.max_episodes
 
+        self.actions_for_std = torch.empty((100, *action_shape), dtype=dtype, device=device)
+        self.actions_for_std_cnt = 0
+
     def append(self, state, action, reward, done, episode_done=None):
         """
         Args:
@@ -49,6 +52,9 @@ class EpisodicReplayBuffer:
         self.actions[self.ep_pointer, self.ep_lens[self.ep_pointer]].copy_(torch.from_numpy(action))
         self.rewards[self.ep_pointer, self.ep_lens[self.ep_pointer]] = float(reward)
         self.dones[self.ep_pointer, self.ep_lens[self.ep_pointer]] = float(done)
+
+        self.actions_for_std[self.actions_for_std_cnt % 100].copy_(torch.from_numpy(action))
+        self.actions_for_std_cnt += 1
 
         self.ep_lens[self.ep_pointer] += 1
         self.cur_size = min(self.cur_size + 1, self.buffer_size)

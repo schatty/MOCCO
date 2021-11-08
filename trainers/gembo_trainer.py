@@ -61,6 +61,17 @@ class GemboTrainer(ModelFreeTrainer):
                 action = self.env.action_space.sample()
             else:
                 action = self.algo.explore(state)
+
+            # Point at which initial action std statistics are calculated
+            #print("env_step: ", env_step)
+            if env_step == 1000: #self.start_steps:
+                print("ACTIONS STD:")
+                print(self.buffer.actions_for_std.std(dim=0))
+
+                
+
+                _ = input('stop')
+
             next_state, reward, done, _ = self.env.step(action)
 
             done_masked = done

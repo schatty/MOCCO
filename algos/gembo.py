@@ -63,6 +63,14 @@ class MCCritic(nn.Module):
         x = torch.cat([states, actions], dim=-1)
         return self.q1(x)
 
+    def get_action_grad(self, states, actions):
+        q1, q2, q3 = self.forward(states, actions)
+        print("q1 q2 q3 shapes: ", q1.shape, q2.shape, q3.shape)
+        q_cat = torch.cat((q1, q2, q3), dim=1)
+        print("q_cat: ", q_cat.shape)
+        var = torch.var(q_cat, dim=1)
+        print("var: ", var.shape)
+        _ = input("stop")
 
 class GEMBO:
 
@@ -118,6 +126,10 @@ class GEMBO:
         self.optim_critic_mc = Adam(self.critic_mc.parameters(), lr=lr_critic)
 
         self.target_update_coef = target_update_coef
+
+        noise_std = 0.58
+        self.norm_noise = np.sqrt(action_shape[0]) * noise_std
+        print("NORM OF ACTION STD: ", self.norm_noise)
 
     def explore(self, state):
         state = torch.tensor(
@@ -197,3 +209,24 @@ class GEMBO:
         with torch.no_grad():
             action = self.actor(state)
         return action.cpu().numpy()[0]
+
+    def get_guided_noise(self, state):
+        a_pi = self.actor(state)
+        d_a = self.critic_mc.get_action_grad(state, a_pi).detach()
+        d_a_norm = torch.linalg.norm(d_a)
+        noise = d_a / d_a_norm * self.norm_noise
+
+        self.da_std_buf.append(d_a.cpu().numpy().flatten())
+        if len(self.da_std_buf) > 1000:
+            self.da_std_buf.pop(0)
+
+        # Logging
+        if self.update_step % 100 == 0:
+            #print("shape of numpy std buf: ", np.array(self.da_std_buf).shape)
+            for i in range(d_a.shape[1]):
+                self.wandb.log({f"noise/d_a_{i}_magnitude": d_a[:, i].abs().mean(), "update_step": self.update_step})
+                self.wandb.log({f"noise/d_a_{i}_std": np.array(self.da_std_buf)[:, i].std(),
+                            "update_step": self.update_step})
+                self.wandb.log({f"noise/d_a{i}_mag_smoothed": np.abs(np.array(self.da_std_buf)[:, i]).mean()})
+
+        return noise
