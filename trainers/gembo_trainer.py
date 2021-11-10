@@ -57,20 +57,16 @@ class GemboTrainer(ModelFreeTrainer):
 
         for env_step in range(self.num_steps + 1):
             ep_step += 1
-            if env_step <= self.start_steps:
+            if env_step <= 1000:# self.start_steps:
                 action = self.env.action_space.sample()
+                self.algo.accumulate_action_gradient(state)
             else:
                 action = self.algo.explore(state)
 
             # Point at which initial action std statistics are calculated
             #print("env_step: ", env_step)
-            if env_step == 1000: #self.start_steps:
-                print("ACTIONS STD:")
-                print(self.buffer.actions_for_std.std(dim=0))
-
-                
-
-                _ = input('stop')
+            #if env_step == 1000: #self.start_steps:
+            #    self.algo.init_da_std()
 
             next_state, reward, done, _ = self.env.step(action)
 
