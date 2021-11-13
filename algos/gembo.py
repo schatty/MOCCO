@@ -133,42 +133,52 @@ class GEMBO:
 
         noise_std = 0.58
         self.da_std_buf = np.zeros((1000, *action_shape))
-        print("DA_STD_BUF: ", self.da_std_buf.shape)
         self.norm_noise = np.sqrt(action_shape[0]) * noise_std
-        print("NORM OF ACTION STD: ", self.norm_noise)
         self.da_std_cnt = 0
         self.da_std_max = np.zeros(*action_shape)
 
-    def explore(self, state):
-        state = torch.tensor(
-            state, dtype=self.dtype, device=self.device).unsqueeze_(0)
-        a_pi = self.actor(state)  # [1, ACTION_DIM]
+    def get_guided_noise(self, state, a_pi=None, with_info=False):
+        #print("state: ", state.shape, state)
+        if a_pi is None:
+            a_pi = self.actor(state)  # [1, ACTION_DIM]
         #print("a_pi: ", a_pi.shape)
+        #print("a_pi: ", a_pi.shape, a_pi)
         
         d_a = self.critic_mc.get_action_grad(self.optim_critic_mc, state, a_pi)  # [1, ACTION_DIM]
         #print("da: ", d_a, d_a.shape)
         da_std = self.da_std_buf.std(axis=0)
         #print("da_std: ", da_std, da_std.shape)
-        scale = da_std / self.da_std_max
+        scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
         #print("scale: ", scale)
+        #print("scale: ", type(scale), scale.shape)
 
-        d_a_norm = torch.linalg.norm(d_a)
-        #print("d_a_norm: ", d_a_norm)
+        #print("da: ", d_a.shape)
+        d_a_norm = torch.linalg.norm(d_a, dim=1, keepdim=True)
+        #print("d_a_norm: ", d_a_norm.shape)
         d_a_normalized = d_a / d_a_norm * self.norm_noise
-        noise = d_a_normalized.cpu() * scale  # [1, 6]
+        #print("d_a_normalized: ", d_a_normalized.shape)
+        noise = d_a_normalized * scale  # [1, 6]
+
+        if with_info:
+            return noise, da_std, scale
+        return noise
+
+    def explore(self, state):
+        state = torch.tensor(
+            state, dtype=self.dtype, device=self.device).unsqueeze_(0)
+
+        a_pi = self.actor(state)
+        noise, da_std, scale = self.get_guided_noise(state, a_pi=a_pi, with_info=True)
+        noise = noise.cpu()
  
         self.accumulate_action_gradient(state)
 
         # Logging
         if self.update_step % self.log_every == 0:
-            for i_a in range(a_pi.shape[1]):
+            for i_a in range(noise.shape[1]):
                 self.wandb.log({f"guided_noise/noise_a{i_a}": noise[0, i_a].item(), "update_step": self.update_step})
                 self.wandb.log({f"guided_noise_da/da_run_std_{i_a}": da_std[i_a].item(), "update_step": self.update_step})
                 self.wandb.log({f"guided_noise_scale/scale_a{i_a}": scale[i_a].item(), "update_step": self.update_step})
-            print("Successfull logging!")
-
-            print("d_a_normalized: ", d_a_normalized.shape) 
-            print("noise: ", noise, noise.shape)
 
         return (a_pi.detach().cpu() + noise).numpy()[0]
 
@@ -187,8 +197,12 @@ class GEMBO:
 
         with torch.no_grad():
             next_actions = self.actor_target(next_states)
-            next_actions = next_actions.clamp(-self.max_action, self.max_action)
-            q_next = self.critic_target(next_states, next_actions)
+        noise = self.get_guided_noise(next_states).detach()
+        #print("noise: ", noise.shape)
+        next_actions = (next_actions + noise).clamp(-self.max_action, self.max_action)
+        #print("Success!")
+        #_ = input('stop update_critic')
+        q_next = self.critic_target(next_states, next_actions)
 
         q_target = rewards + (1.0 - dones) * self.discount * q_next
         q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
@@ -213,6 +227,9 @@ class GEMBO:
             self.wandb.log({"algo/critic_loss_total": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
             self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
+
+            for i_a in range(actions.shape[1]):
+                self.wandb.log({f"guided_noise_critic/noise_a{i_a}": noise[0, i_a].item(), "update_step": self.update_step})
 
     def update_critic_mc(self, states, actions, qs_mc):
         q1, q2, q3 = self.critic_mc(states, actions)
@@ -256,33 +273,3 @@ class GEMBO:
         #print("da std: ", self.da_std_buf.std(axis=0), self.da_std_buf.std(axis=0).shape)
         self.da_std_max = np.maximum(self.da_std_max, self.da_std_buf.std(axis=0))
 
-    '''
-    def init_da_std(self):
-
-        self.da_std_buf = self.da_std_buf[-100:, :]
-        self.da_std_cnt = 0
-
-        print("Initial STD of action gradients: ", self.da_std_init)
-    '''
-
-    def get_guided_noise(self, state):
-        a_pi = self.actor(state)
-        d_a = self.critic_mc.get_action_grad(state, a_pi).detach()
-
-        self.da_std_buf.append(d_a.cpu().numpy().flatten())
-        if len(self.da_std_buf) > 1000:
-            self.da_std_buf.pop(0)
-
-        # Normalize noise
-        d_a_norm = torch.linalg.norm(d_a)
-        noise = d_a / d_a_norm * self.norm_noise
-
-        # Logging
-        if self.update_step % 100 == 0:
-            #print("shape of numpy std buf: ", np.array(self.da_std_buf).shape)
-            for i in range(d_a.shape[1]):
-                self.wandb.log({f"noise/d_a_{i}_magnitude": d_a[:, i].abs().mean(), "update_step": self.update_step})
-                self.wandb.log({f"noise/d_a_{i}_std": np.array(self.da_std_buf)[:, i].std(), "update_step": self.update_step})
-                self.wandb.log({f"noise/d_a{i}_mag_smoothed": np.abs(np.array(self.da_std_buf)[:, i]).mean(), "update_step": self.update_step})
-
-        return noise
