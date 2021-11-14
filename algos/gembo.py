@@ -132,7 +132,7 @@ class GEMBO:
         self.target_update_coef = target_update_coef
 
         noise_std = 0.58
-        self.da_std_buf = np.zeros((10000, *action_shape))
+        self.da_std_buf = np.zeros((1000, *action_shape))
         self.norm_noise = np.sqrt(action_shape[0]) * noise_std
         self.da_std_cnt = 0
         self.da_std_max = np.zeros(*action_shape)
