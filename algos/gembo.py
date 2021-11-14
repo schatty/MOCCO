@@ -136,7 +136,6 @@ class GEMBO:
         self.norm_noise = np.sqrt(action_shape[0]) * noise_std
         self.da_std_cnt = 0
         self.da_std_max = np.zeros(*action_shape)
-        self.da_std_size = 0
 
     def get_guided_noise(self, state, a_pi=None, with_info=False):
         #print("state: ", state.shape, state)
@@ -147,8 +146,7 @@ class GEMBO:
         
         d_a = self.critic_mc.get_action_grad(self.optim_critic_mc, state, a_pi)  # [1, ACTION_DIM]
         #print("da: ", d_a, d_a.shape)
-        da_std_len = min(self.da_std_size, self.da_std_buf.shape[0])
-        da_std = self.da_std_buf[:da_std_len, :].std(axis=0)
+        da_std = self.da_std_buf.std(axis=0)
         #print("da_std: ", da_std, da_std.shape)
         scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
         #print("scale: ", scale)
@@ -269,10 +267,8 @@ class GEMBO:
         d_a = self.critic_mc.get_action_grad(self.optim_critic_mc, state, a_pi).detach()
         self.da_std_buf[self.da_std_cnt, :] = d_a.cpu().numpy().flatten()
         self.da_std_cnt = (self.da_std_cnt + 1) % self.da_std_buf.shape[0]
-        self.da_std_size += 1
 
-        da_std_len = min(self.da_std_size, self.da_std_buf.shape[0])
-        da_std = self.da_std_buf[:da_std_len, :].std(axis=0)
+        da_std = self.da_std_buf.std(axis=0)
         #print("Max prev: ", self.da_std_max, self.da_std_max.shape)
         self.da_std_max = np.maximum(self.da_std_max, da_std)
 
