@@ -80,4 +80,4 @@ class MLP(nn.Module):
         for p in self.nn.parameters():
             param_norm = p.grad.detach().data.norm(2)
             total_norm += param_norm.item() ** 2
-        return total_norm
+        return total_norm ** 0.5

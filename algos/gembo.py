@@ -215,6 +215,7 @@ class GEMBO:
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), int(1e6))
         self.optim_critic.step()
 
         if self.update_step % self.log_every == 0:
