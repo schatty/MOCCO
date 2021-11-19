@@ -215,7 +215,7 @@ class GEMBO:
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), int(1e6))
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), int(2_000))
         self.optim_critic.step()
 
         if self.update_step % self.log_every == 0:
@@ -227,7 +227,6 @@ class GEMBO:
             self.wandb.log({"algo/critic_loss_mc": mc_loss.item(), "update_step": self.update_step})
             self.wandb.log({"algo/critic_loss_total": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
-            self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
 
             for i_a in range(actions.shape[1]):
                 self.wandb.log({f"guided_noise_critic/noise_a{i_a}": noise[0, i_a].item(), "update_step": self.update_step})
@@ -237,6 +236,7 @@ class GEMBO:
         loss_mc = (q1 - qs_mc).pow(2).mean() + (q2 - qs_mc).pow(2).mean() + (q3 - qs_mc).pow(2).mean()
         self.optim_critic_mc.zero_grad()
         loss_mc.backward()
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 2000)
         self.optim_critic_mc.step()
 
         if self.update_step % self.log_every == 0:
@@ -249,10 +249,12 @@ class GEMBO:
 
         self.optim_actor.zero_grad()
         loss_actor.backward()
+        #torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 10_000)
         self.optim_actor.step()
 
         if self.update_step % self.log_every == 0:
             self.wandb.log({"algo/loss_actor": loss_actor.item(), "update_step": self.update_step})
+            self.wandb.log({"algo/actor_grad_norm": self.actor.mlp.get_layer_norm(), "update_step": self.update_step})
 
     def exploit(self, state):
         state = torch.tensor(
