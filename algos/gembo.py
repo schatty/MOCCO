@@ -187,6 +187,7 @@ class GEMBO:
 
         self.update_critic_mc(*batch_mc)
         self.update_critic(*batch)
+
         self.update_actor(batch[0])
 
         soft_update(self.critic_target, self.critic, self.target_update_coef)
@@ -198,10 +199,7 @@ class GEMBO:
         with torch.no_grad():
             next_actions = self.actor_target(next_states)
         noise = self.get_guided_noise(next_states).detach()
-        #print("noise: ", noise.shape)
         next_actions = (next_actions + noise).clamp(-self.max_action, self.max_action)
-        #print("Success!")
-        #_ = input('stop update_critic')
         q_next = self.critic_target(next_states, next_actions)
 
         q_target = rewards + (1.0 - dones) * self.discount * q_next
@@ -210,12 +208,11 @@ class GEMBO:
         q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
 
         td_loss = (q1 - q_target).pow(2).mean()
-        mc_loss = (q1 - q_mc).pow(2).mean()
+        mc_loss = 0.5 * (q1 - q_mc).pow(2).mean()
         loss_critic = td_loss + mc_loss
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), int(2_000))
         self.optim_critic.step()
 
         if self.update_step % self.log_every == 0:
@@ -236,7 +233,6 @@ class GEMBO:
         loss_mc = (q1 - qs_mc).pow(2).mean() + (q2 - qs_mc).pow(2).mean() + (q3 - qs_mc).pow(2).mean()
         self.optim_critic_mc.zero_grad()
         loss_mc.backward()
-        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 2000)
         self.optim_critic_mc.step()
 
         if self.update_step % self.log_every == 0:
@@ -249,7 +245,6 @@ class GEMBO:
 
         self.optim_actor.zero_grad()
         loss_actor.backward()
-        #torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 10_000)
         self.optim_actor.step()
 
         if self.update_step % self.log_every == 0:
