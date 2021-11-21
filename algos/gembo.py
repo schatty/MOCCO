@@ -149,8 +149,7 @@ class GEMBO:
         da_std = self.da_std_buf.std(axis=0)
         #print("da_std: ", da_std, da_std.shape)
         scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
-        #print("scale: ", scale)
-        #print("scale: ", type(scale), scale.shape)
+        scale = torch.max(torch.ones(scale.shape).to(self.device) * 0.2, scale)
 
         #print("da: ", d_a.shape)
         d_a_norm = torch.linalg.norm(d_a, dim=1, keepdim=True)
@@ -208,7 +207,7 @@ class GEMBO:
         q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
 
         td_loss = (q1 - q_target).pow(2).mean()
-        mc_loss = 0.5 * (q1 - q_mc).pow(2).mean()
+        mc_loss = (q1 - q_mc).pow(2).mean()
         loss_critic = td_loss + mc_loss
 
         self.optim_critic.zero_grad()
