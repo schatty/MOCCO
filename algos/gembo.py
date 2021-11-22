@@ -149,7 +149,7 @@ class GEMBO:
         da_std = self.da_std_buf.std(axis=0)
         #print("da_std: ", da_std, da_std.shape)
         scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
-        scale = torch.max(torch.ones(scale.shape).to(self.device) * 0.2, scale)
+        # scale = torch.max(torch.ones(scale.shape).to(self.device) * 0.2, scale)
 
         #print("da: ", d_a.shape)
         d_a_norm = torch.linalg.norm(d_a, dim=1, keepdim=True)
@@ -179,7 +179,8 @@ class GEMBO:
                 self.wandb.log({f"guided_noise_da/da_run_std_{i_a}": da_std[i_a].item(), "update_step": self.update_step})
                 self.wandb.log({f"guided_noise_scale/scale_a{i_a}": scale[i_a].item(), "update_step": self.update_step})
 
-        return (a_pi.detach().cpu() + noise).numpy()[0]
+        a_noised = (a_pi.detach().cpu() + noise).numpy()[0]
+        return np.clip(a_noised, -self.max_action, self.max_action)
 
     def update(self, batch, batch_mc):
         self.update_step += 1
