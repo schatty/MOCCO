@@ -64,7 +64,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "DDPG":
-        trainer_class = ModelFreeTrainer
+        trainer_class = GemboTrainer  #ModelFreeTrainer
         algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -73,6 +73,7 @@ def run(args):
             batch_size=args.batch_size,
             device=args.device,
             seed=args.seed,
+            guided_exploration=args.ge,
             wandb=wandb
         )
     elif args.algo == "GEMBO":
@@ -137,5 +138,6 @@ if __name__ == '__main__':
     p.add_argument("--stdout_log_every", type=int, default=int(100000))
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
+    p.add_argument("--ge", action="store_true")
     args = p.parse_args()
     run(args)

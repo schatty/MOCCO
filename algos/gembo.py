@@ -8,7 +8,7 @@ from torch.optim import Adam
 import torch.nn.functional as F
 
 
-from .nn import Critic, MLP
+from .nn import Critic, MLP, MCCritic
 from .utils import Clamp, initialize_weight, soft_update, disable_gradient
 
 
@@ -27,53 +27,6 @@ class DeterministicPolicy(nn.Module):
 
     def forward(self, states):
         return torch.tanh(self.mlp(states))
-
-
-class MCCritic(nn.Module):
-
-    def __init__(self, state_shape, action_shape, hidden_units=(256, 256),
-                 hidden_activation=nn.ReLU(inplace=True)):
-        super().__init__()
-
-        self.q1 = MLP(
-            input_dim=state_shape[0] + action_shape[0],
-            output_dim=1,
-            hidden_units=hidden_units,
-            hidden_activation=hidden_activation
-        )
-
-        self.q2 = MLP(
-            input_dim=state_shape[0] + action_shape[0],
-            output_dim=1,
-            hidden_units=hidden_units,
-            hidden_activation=hidden_activation
-        )
-
-        self.q3 = MLP(
-            input_dim=state_shape[0] + action_shape[0],
-            output_dim=1,
-            hidden_units=hidden_units,
-            hidden_activation=hidden_activation
-        )
-
-    def forward(self, states, actions):
-        x = torch.cat([states, actions], dim=-1)
-        return self.q1(x), self.q2(x), self.q3(x)
-
-    def Q1(self, states, actions):
-        x = torch.cat([states, actions], dim=-1)
-        return self.q1(x)
-
-    def get_action_grad(self, optim, states, actions): #, actions):
-        q1, q2, q3 = self.forward(states, actions)
-        q_cat = torch.cat((q1, q2, q3), dim=1).flatten()
-        var = torch.var(q_cat)
-
-        optim.zero_grad()
-        var.backward(retain_graph=True)
-        da = torch.autograd.grad(var, actions)
-
-        return da[0] + 1e-8
 
 
 class GEMBO:
@@ -138,24 +91,15 @@ class GEMBO:
         self.da_std_max = np.zeros(*action_shape)
 
     def get_guided_noise(self, state, a_pi=None, with_info=False):
-        #print("state: ", state.shape, state)
         if a_pi is None:
             a_pi = self.actor(state)  # [1, ACTION_DIM]
-        #print("a_pi: ", a_pi.shape)
-        #print("a_pi: ", a_pi.shape, a_pi)
         
         d_a = self.critic_mc.get_action_grad(self.optim_critic_mc, state, a_pi)  # [1, ACTION_DIM]
-        #print("da: ", d_a, d_a.shape)
         da_std = self.da_std_buf.std(axis=0)
-        #print("da_std: ", da_std, da_std.shape)
         scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
-        # scale = torch.max(torch.ones(scale.shape).to(self.device) * 0.2, scale)
 
-        #print("da: ", d_a.shape)
         d_a_norm = torch.linalg.norm(d_a, dim=1, keepdim=True)
-        #print("d_a_norm: ", d_a_norm.shape)
         d_a_normalized = d_a / d_a_norm * self.norm_noise
-        #print("d_a_normalized: ", d_a_normalized.shape)
         noise = d_a_normalized * scale  # [1, 6]
 
         if with_info:
@@ -267,6 +211,4 @@ class GEMBO:
         self.da_std_cnt = (self.da_std_cnt + 1) % self.da_std_buf.shape[0]
 
         da_std = self.da_std_buf.std(axis=0)
-        #print("Max prev: ", self.da_std_max, self.da_std_max.shape)
         self.da_std_max = np.maximum(self.da_std_max, da_std)
-
