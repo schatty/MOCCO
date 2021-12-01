@@ -82,7 +82,7 @@ class DDPG:
         with torch.no_grad():
             noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
             action = self.actor(state) + noise
-        return action.cpu().numpy()[0]
+        return np.clip(action.cpu().numpy()[0], -self.max_action, self.max_action)
 
     def update(self, states, actions, rewards, dones, next_states):
         self.update_step += 1

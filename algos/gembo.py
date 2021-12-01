@@ -73,7 +73,7 @@ class MCCritic(nn.Module):
         var.backward(retain_graph=True)
         da = torch.autograd.grad(var, actions)
 
-        return da[0]
+        return da[0] + 1e-8
 
 
 class GEMBO:
