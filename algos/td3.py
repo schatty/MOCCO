@@ -80,20 +80,20 @@ class TD3:
 
         self.target_update_coef = target_update_coef
 
-        if guided_exploration:
-            self.critic_mc = MCCritic(
-                state_shape=self.state_shape,
-                action_shape=self.action_shape,
-                hidden_units=[256, 256],
-                hidden_activation=nn.ReLU(inplace=True)
-            ).to(self.device)
-            self.optim_critic_mc = Adam(self.critic_mc.parameters(), lr=lr_critic)
+        #if guided_exploration:
+        self.critic_mc = MCCritic(
+            state_shape=self.state_shape,
+            action_shape=self.action_shape,
+            hidden_units=[256, 256],
+            hidden_activation=nn.ReLU(inplace=True)
+        ).to(self.device)
+        self.optim_critic_mc = Adam(self.critic_mc.parameters(), lr=lr_critic)
 
-            noise_std = 0.58
-            self.da_std_buf = np.zeros((1000, *action_shape))
-            self.norm_noise = np.sqrt(action_shape[0]) * noise_std
-            self.da_std_cnt = 0
-            self.da_std_max = np.zeros(*action_shape)
+        noise_std = 0.58
+        self.da_std_buf = np.zeros((1000, *action_shape))
+        self.norm_noise = np.sqrt(action_shape[0]) * noise_std
+        self.da_std_cnt = 0
+        self.da_std_max = np.zeros(*action_shape)
 
     def get_guided_noise(self, state, a_pi=None, with_info=False):
         if a_pi is None:
@@ -115,7 +115,7 @@ class TD3:
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
 
-        if not self.guided_exploration:
+        if True: #not self.guided_exploration:
             with torch.no_grad():
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
                 action = self.actor(state) + noise
@@ -172,13 +172,18 @@ class TD3:
             next_actions = next_actions.clamp(-self.max_action, self.max_action)
 
             q1_next, q2_next = self.critic_target(next_states, next_actions)
-            q_next = torch.min(q1_next, q2_next)
+            q_next = q1_next  #torch.min(q1_next, q2_next)
 
         q_target = rewards + (1.0 - dones) * self.discount * q_next
 
+        q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
+        q_mc_cat = torch.cat((q_mc_1, q_mc_2, q_mc_3), dim=1)
+        q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
+        mc_error = 0.1 * (q1 - q_mc).pow(2).mean()
+
         td_error1 = (q1 - q_target).pow(2).mean()
-        td_error2 = (q2 - q_target).pow(2).mean()
-        loss_critic = td_error1 + td_error2
+        #td_error2 = (q2 - q_target).pow(2).mean()
+        loss_critic = td_error1 + mc_error
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
