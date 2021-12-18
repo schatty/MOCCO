@@ -115,7 +115,7 @@ class TD3:
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
 
-        if True: #not self.guided_exploration:
+        if not self.guided_exploration:
             with torch.no_grad():
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
                 action = self.actor(state) + noise
