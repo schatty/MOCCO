@@ -192,6 +192,7 @@ class TD3:
         if self.update_step % self.log_every == 0:
             self.wandb.log({"algo/q1": q1.detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/q_target": q_target.mean().cpu(), "update_step": self.update_step})
+            self.wandb.log({"algo/q_mc": q_mc.mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/abs_q_err": (q1 - q_target).detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/critic_loss": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
