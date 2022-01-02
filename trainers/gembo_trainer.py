@@ -40,7 +40,7 @@ class GemboTrainer(ModelFreeTrainer):
                          start_steps=start_steps, batch_size=batch_size, eval_interval=eval_interval,
                          num_eval_episodes=num_eval_episodes, save_buffer_every=save_buffer_every,
                          visualize_every=visualize_every, estimate_q_every=estimate_q_every, seed=seed,
-                         log_dir=log_dir, wandb=wandb)
+                         log_dir=log_dir, wandb=wandb, stdout_log_every=stdout_log_every)
 
         self.buffer_mc = MCEpisodicReplayBuffer(
             buffer_size=100000,
@@ -55,20 +55,28 @@ class GemboTrainer(ModelFreeTrainer):
         mean_reward = 0
         state = self.env.reset()
 
+        print("stdout log every: ", self.stdout_log_every)
+
         for env_step in range(self.num_steps + 1):
+            #print("env step: ", env_step)
             ep_step += 1
             if env_step <= 1000:# self.start_steps:
                 action = self.env.action_space.sample()
                 self.algo.accumulate_action_gradient(state)
             else:
-                action = self.algo.explore(state)
+                #print("action from explore")
+                action, action_info = self.algo.explore(state)
 
             # Point at which initial action std statistics are calculated
             #print("env_step: ", env_step)
             #if env_step == 1000: #self.start_steps:
             #    self.algo.init_da_std()
 
-            next_state, reward, done, _ = self.env.step(action)
+            try:
+                next_state, reward, done, _ = self.env.step(action)
+            except Exception as e:
+                print("Exception: ", e)
+                print("action: ", action)
 
             done_masked = done
             if ep_step == self.env._max_episode_steps:
@@ -86,6 +94,16 @@ class GemboTrainer(ModelFreeTrainer):
             batch = self.buffer.sample(self.batch_size)
             batch_mc = self.buffer_mc.sample(self.batch_size)
             self.algo.update(batch, batch_mc)
+
+            #print("env step: ", env_step)
+            if env_step == 100000:
+                action, action_info = self.algo.explore(state, ge_on=True)
+                print("Action_info: ", action_info)
+
+                print("Visualizing start...")
+                self.algo.vizualize_guided_noise(state, action, self.env, action_info)
+                print("Success...")
+                _ = input("stop")
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()

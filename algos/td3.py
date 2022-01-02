@@ -1,4 +1,6 @@
 from copy import deepcopy
+from time import time
+import pickle
 import math
 
 import numpy as np
@@ -6,6 +8,7 @@ import torch
 from torch import nn
 from torch.optim import Adam
 import torch.nn.functional as F
+from copy import copy
 
 
 from .nn import DoubleCritic, MLP, MCCritic
@@ -98,30 +101,31 @@ class TD3:
     def get_guided_noise(self, state, a_pi=None, with_info=False):
         if a_pi is None:
             a_pi = self.actor(state)  # [1, ACTION_DIM]
-        
+
         d_a = self.critic_mc.get_action_grad(self.optim_critic_mc, state, a_pi)  # [1, ACTION_DIM]
         da_std = self.da_std_buf.std(axis=0)
         scale = torch.tensor(da_std / self.da_std_max).float().to(self.device)
 
         d_a_norm = torch.linalg.norm(d_a, dim=1, keepdim=True)
         d_a_normalized = d_a / d_a_norm * self.norm_noise
-        noise = d_a_normalized * scale  # [1, 6]
+        noise = d_a_normalized  # * scale  # [1, 6]
 
         if with_info:
             return noise, da_std, scale
         return noise
 
-    def explore(self, state):
+    def explore(self, state, ge_on=False):
+        #print("Guided exploration: ", self.guided_exploration)
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
 
-        if not self.guided_exploration:
+        if not self.guided_exploration and not ge_on:
             with torch.no_grad():
                 noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
                 action = self.actor(state) + noise
 
             a = action.cpu().numpy()[0]
-            return np.clip(a, -self.max_action, self.max_action)
+            return np.clip(a, -self.max_action, self.max_action), {}
 
         a_pi = self.actor(state)
         noise, da_std, scale = self.get_guided_noise(state, a_pi=a_pi, with_info=True)
@@ -136,8 +140,16 @@ class TD3:
                 self.wandb.log({f"guided_noise_da/da_run_std_{i_a}": da_std[i_a].item(), "update_step": self.update_step})
                 self.wandb.log({f"guided_noise_scale/scale_a{i_a}": scale[i_a].item(), "update_step": self.update_step})
 
+        #print("a noised: ", (a_pi.detach().cpu() + noise).numpy())
+        #print("a noise 0: ", (a_pi.detach().cpu() + noise).numpy()[0])
         a_noised = (a_pi.detach().cpu() + noise).numpy()[0]
-        return np.clip(a_noised, -self.max_action, self.max_action)
+
+        info = {
+            "action": a_pi.detach().cpu().numpy(),
+            "noise": noise.numpy(),
+            "action_final": a_noised
+        }
+        return np.clip(a_noised, -self.max_action, self.max_action), info
 
     def update(self, batch, batch_mc):
         self.update_step += 1
@@ -148,6 +160,47 @@ class TD3:
             self.update_actor(batch[0])
             soft_update(self.critic_target, self.critic, self.target_update_coef)
             soft_update(self.actor_target, self.actor, self.target_update_coef)
+
+    def vizualize_guided_noise(self, state, action, env, action_info):
+        t1 = time()
+        print("state: ", state.shape, state)
+        print("action: ", action.shape, action)
+
+        step = 0.005
+        n = len(np.arange(-1, 1, step))
+        print(f"Creating matrix: {n}x{n}")
+        rewards_m = np.zeros((n, n))
+        q_m = np.zeros((n, n))
+        uncertainty_m = np.zeros((n, n))
+        s_t = torch.tensor(state).float().unsqueeze(0).to(self.device)
+        print("s_t: ", s_t.shape)
+
+        for i, a_1 in enumerate(np.arange(-1, 1, step)):
+            for j, a_0 in enumerate(np.arange(-1, 1, step)):
+                env_tmp = copy(env)
+                a = np.array([a_1, a_0])
+                _, reward, _, _ = env_tmp.step(a)
+                rewards_m[i, j] = reward
+
+                a_t = torch.tensor(a).float().unsqueeze(0).to(self.device)
+                unc = self.critic_mc.get_var(s_t, a_t)
+                uncertainty_m[i, j] = unc
+
+                q, _ = self.critic(s_t, a_t)
+                q_m[i, j] = q
+
+        print('Reward: ', reward)
+        print(f"Time: {(time() - t1) / 60:.2f} min")
+
+        fn = "/home/igor/tmp/noise_viz.pickle"
+        with open(fn, "wb") as f:
+            pickle.dump({
+                "reward": rewards_m,
+                "uncertainty": uncertainty_m,
+                "q": q_m,
+                "action_info": action_info
+            }, f)
+            print(f"Successfully dumped to: {fn}")
 
     def update_critic_mc(self, states, actions, qs_mc):
         q1, q2, q3 = self.critic_mc(states, actions)
@@ -172,18 +225,18 @@ class TD3:
             next_actions = next_actions.clamp(-self.max_action, self.max_action)
 
             q1_next, q2_next = self.critic_target(next_states, next_actions)
-            q_next = q1_next  #torch.min(q1_next, q2_next)
+            q_next = torch.min(q1_next, q2_next)
 
         q_target = rewards + (1.0 - dones) * self.discount * q_next
 
-        q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
-        q_mc_cat = torch.cat((q_mc_1, q_mc_2, q_mc_3), dim=1)
-        q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
-        mc_error = 0.1 * (q1 - q_mc).pow(2).mean()
+        # q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
+        # q_mc_cat = torch.cat((q_mc_1, q_mc_2, q_mc_3), dim=1)
+        # q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
+        # mc_error = 0.1 * (q1 - q_mc).pow(2).mean()
 
         td_error1 = (q1 - q_target).pow(2).mean()
-        #td_error2 = (q2 - q_target).pow(2).mean()
-        loss_critic = td_error1 + mc_error
+        td_error2 = (q2 - q_target).pow(2).mean()
+        loss_critic = td_error1 + td_error2
 
         self.optim_critic.zero_grad()
         loss_critic.backward()

@@ -101,6 +101,11 @@ class MCCritic(nn.Module):
 
         return da[0] + 1e-8
 
+    def get_var(self, states, actions):
+        q1, q2, q3 = self.forward(states, actions)
+        q_cat = torch.cat((q1, q2, q3), dim=1).flatten()
+        return torch.var(q_cat)
+
 
 class MLP(nn.Module):
     
