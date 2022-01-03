@@ -183,7 +183,7 @@ class TD3:
 
         td_error1 = (q1 - q_target).pow(2).mean()
         #td_error2 = (q2 - q_target).pow(2).mean()
-        loss_critic = td_error1 + mc_error
+        loss_critic = td_error1  #+ mc_error
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
