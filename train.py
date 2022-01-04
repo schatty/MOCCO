@@ -56,6 +56,7 @@ def run(args):
             gamma=args.gamma,
             batch_size=args.batch_size,
             device=args.device,
+            expl_noise=args.expl_noise,
             seed=args.seed,
             wandb=wandb
         )
@@ -120,5 +121,6 @@ if __name__ == '__main__':
     p.add_argument("--stdout_log_every", type=int, default=int(100000))
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
+    p.add_argument("--expl_noise", type=float, default=0.1)
     args = p.parse_args()
     run(args)
