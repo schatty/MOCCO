@@ -88,6 +88,7 @@ class ModelFreeTrainer:
             self.buffer.append(state, action, reward, done_masked, episode_done=done)
             if done:
                 next_state = self.env.reset()
+                self.algo.ou_noise.reset()
                 ep_step = 0
             state = next_state
 
