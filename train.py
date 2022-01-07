@@ -62,6 +62,8 @@ def run(args):
             device=args.device,
             seed=args.seed,
             guided_exploration=args.ge,
+            beta=args.beta,
+            da_size=args.da_size,
             wandb=wandb
         )
     elif args.algo == "DDPG":
@@ -99,6 +101,7 @@ def run(args):
         num_steps=args.num_steps,
         start_steps=args.start_steps,
         buffer_size=args.buffer_size,
+        buffer_size_mc=args.buffer_size_mc,
         batch_size=args.batch_size,
         gamma=args.gamma,
         eval_interval=args.eval_interval,
@@ -128,6 +131,7 @@ if __name__ == '__main__':
     p.add_argument('--alpha_init', type=float, default=0.2)
     p.add_argument('--tune_alpha', action="store_true")
     p.add_argument('--buffer_size', type=int, default=int(3e6))
+    p.add_argument('--buffer_size_mc', type=int, default=100000)
     p.add_argument('--batch_size', type=int, default=256)
     p.add_argument('--device', type=str, default="cuda:0")
     p.add_argument('--seed', type=int, default=0)
@@ -140,5 +144,7 @@ if __name__ == '__main__':
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
     p.add_argument("--ge", action="store_true")
+    p.add_argument("--beta", type=float, default=0.1)
+    p.add_argument("--da_size", type=int, default=1000)
     args = p.parse_args()
     run(args)

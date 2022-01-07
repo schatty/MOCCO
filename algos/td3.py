@@ -31,9 +31,9 @@ class DeterministicPolicy(nn.Module):
 
 class TD3:
 
-    def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2,
+    def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2, beta=0.1,
                  expl_noise=0.1, noise_clip=0.5, policy_freq=2, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,
-                 max_action=1.0, target_update_coef=5e-3, log_every=5000, guided_exploration=False, wandb=None):
+                 max_action=1.0, target_update_coef=5e-3, log_every=5000, guided_exploration=False, da_size=1000, wandb=None):
         np.random.seed(seed)
         torch.manual_seed(seed)
 
@@ -52,6 +52,7 @@ class TD3:
         self.discount = gamma
         self.log_every = log_every
         self.guided_exploration = guided_exploration
+        self.beta = beta
 
         assert wandb is not None, "wandb as a named argument is required"
         self.wandb = wandb
@@ -90,7 +91,7 @@ class TD3:
         self.optim_critic_mc = Adam(self.critic_mc.parameters(), lr=lr_critic)
 
         noise_std = 0.58
-        self.da_std_buf = np.zeros((1000, *action_shape))
+        self.da_std_buf = np.zeros((da_size, *action_shape))
         self.norm_noise = np.sqrt(action_shape[0]) * noise_std
         self.da_std_cnt = 0
         self.da_std_max = np.zeros(*action_shape)
@@ -179,7 +180,7 @@ class TD3:
         q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
         q_mc_cat = torch.cat((q_mc_1, q_mc_2, q_mc_3), dim=1)
         q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
-        mc_error = 0.1 * (q1 - q_mc).pow(2).mean()
+        mc_error = self.beta * (q1 - q_mc).pow(2).mean()
 
         td_error1 = (q1 - q_target).pow(2).mean()
         #td_error2 = (q2 - q_target).pow(2).mean()
