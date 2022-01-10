@@ -172,18 +172,13 @@ class TD3:
             next_actions = next_actions.clamp(-self.max_action, self.max_action)
 
             q1_next, q2_next = self.critic_target(next_states, next_actions)
-            q_next = q1_next  #torch.min(q1_next, q2_next)
+            q_next = torch.min(q1_next, q2_next)
 
         q_target = rewards + (1.0 - dones) * self.discount * q_next
 
-        q_mc_1, q_mc_2, q_mc_3 = self.critic_mc(states, actions)
-        q_mc_cat = torch.cat((q_mc_1, q_mc_2, q_mc_3), dim=1)
-        q_mc = torch.mean(q_mc_cat, dim=1, keepdim=True).detach()
-        mc_error = 0.1 * (q1 - q_mc).pow(2).mean()
-
         td_error1 = (q1 - q_target).pow(2).mean()
-        #td_error2 = (q2 - q_target).pow(2).mean()
-        loss_critic = td_error1 + mc_error
+        td_error2 = (q2 - q_target).pow(2).mean()
+        loss_critic = td_error1 + td_error2
 
         self.optim_critic.zero_grad()
         loss_critic.backward()
@@ -192,7 +187,6 @@ class TD3:
         if self.update_step % self.log_every == 0:
             self.wandb.log({"algo/q1": q1.detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/q_target": q_target.mean().cpu(), "update_step": self.update_step})
-            self.wandb.log({"algo/q_mc": q_mc.mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/abs_q_err": (q1 - q_target).detach().mean().cpu(), "update_step": self.update_step})
             self.wandb.log({"algo/critic_loss": loss_critic.item(), "update_step": self.update_step})
             self.wandb.log({"algo/q1_grad_norm": self.critic.q1.get_layer_norm(), "update_step": self.update_step})
