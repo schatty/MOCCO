@@ -43,7 +43,7 @@ class GemboTrainer(ModelFreeTrainer):
                          log_dir=log_dir, wandb=wandb)
 
         self.buffer_mc = MCEpisodicReplayBuffer(
-            buffer_size=100000,
+            buffer_size=10000,
             state_shape=state_shape,
             action_shape=action_shape,
             device=device,
