@@ -13,6 +13,7 @@ class GemboTrainer(ModelFreeTrainer):
     def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(3e6),
                  gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(1e3), batch_size=128,
                  eval_interval=int(2e3), num_eval_episodes=10, save_buffer_every=0, visualize_every=0,
+                 guided_exploration=False,
                  estimate_q_every=0, stdout_log_every=int(1e5), seed=0, log_dir=None, wandb=None):
         """
         Args:
@@ -42,6 +43,7 @@ class GemboTrainer(ModelFreeTrainer):
                          visualize_every=visualize_every, estimate_q_every=estimate_q_every, seed=seed,
                          log_dir=log_dir, wandb=wandb)
 
+        self.guided_exploration = guided_exploration
         self.buffer_mc = MCEpisodicReplayBuffer(
             buffer_size=100000,
             state_shape=state_shape,
@@ -59,7 +61,8 @@ class GemboTrainer(ModelFreeTrainer):
             ep_step += 1
             if env_step <= 1000:# self.start_steps:
                 action = self.env.action_space.sample()
-                self.algo.accumulate_action_gradient(state)
+                if self.guided_exploration:
+                    self.algo.accumulate_action_gradient(state)
             else:
                 action = self.algo.explore(state)
 

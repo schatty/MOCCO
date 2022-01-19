@@ -56,7 +56,7 @@ class DDPG:
         self.actor = DeterministicPolicy(
             state_shape=self.state_shape,
             action_shape=self.action_shape,
-            hidden_units=[256, 256],
+            hidden_units=[64, 32],
             hidden_activation=nn.ReLU(inplace=True)
         ).to(self.device)
 
@@ -65,7 +65,7 @@ class DDPG:
         self.critic = Critic(
             state_shape=self.state_shape,
             action_shape=self.action_shape,
-            hidden_units=[256, 256],
+            hidden_units=[64, 32],
             hidden_activation=nn.ReLU(inplace=True)
         ).to(self.device)
 
@@ -136,7 +136,8 @@ class DDPG:
 
     def update(self, batch, batch_mc):
         self.update_step += 1
-        self.update_critic_mc(*batch_mc)
+        if self.guided_exploration:
+            self.update_critic_mc(*batch_mc)
         self.update_critic(*batch)
 
         self.update_actor(batch[0])

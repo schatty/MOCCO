@@ -8,7 +8,7 @@ except ModuleNotFoundError as e:
 
 OPENAI_MUJOCO_PREFIX = [
     "Walker", "HalfCheetah", "Swimmer", "InvertedPendulum", "InvertedDoublePendulum",
-    "Hopper", "Humanoid", "Reacher", "Ant"
+    "Hopper", "Humanoid", "Reacher", "Ant", "MountainCarContinuous", "BipedalWalker"
 ]
 
 

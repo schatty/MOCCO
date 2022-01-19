@@ -75,6 +75,8 @@ def run(args):
             device=args.device,
             seed=args.seed,
             guided_exploration=args.ge,
+            lr_actor=args.lr_actor,
+            lr_critic=args.lr_critic,
             wandb=wandb
         )
     elif args.algo == "GEMBO":
@@ -109,6 +111,7 @@ def run(args):
         visualize_every=args.visualize_every,
         estimate_q_every=args.estimate_q_every,
         stdout_log_every=args.stdout_log_every,
+        #guided_exploration=args.ge,
         wandb=wandb
     )
 
@@ -123,7 +126,7 @@ if __name__ == '__main__':
     p.add_argument('--gamma', type=float, default=0.99)
     p.add_argument('--tau', type=float, default=5e-3)
     p.add_argument('--lr_actor', type=float, default=3e-4)
-    p.add_argument('--lr_critic', type=float, default=1e-3)
+    p.add_argument('--lr_critic', type=float, default=3e-4)
     p.add_argument('--lr_alpha', type=float, default=1e-3)
     p.add_argument('--alpha_init', type=float, default=0.2)
     p.add_argument('--tune_alpha', action="store_true")

@@ -51,7 +51,7 @@ class ModelFreeTrainer:
         self.env_test.seed(100 + seed)
 
         self.buffer = EpisodicReplayBuffer(
-            buffer_size=buffer_size,
+            buffer_size=10000,
             state_shape=state_shape,
             action_shape=action_shape,
             device=device,
@@ -93,7 +93,7 @@ class ModelFreeTrainer:
 
             if len(self.buffer) < self.batch_size:
                 continue
-            batch = self.buffer.sample(self.batch_size)
+            batch = self.buffer.sample(64)  #self.batch_size)
             self.algo.update(*batch)
 
             if env_step % self.eval_interval == 0:
