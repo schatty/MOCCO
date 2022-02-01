@@ -7,6 +7,8 @@ import wandb
 from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
+from algos.gembo import GEMBO
+from trainers.gembo_trainer import GemboTrainer
 from trainers.mf_trainer import ModelFreeTrainer
 from env import make_env
 
@@ -33,6 +35,7 @@ def run(args):
     ACTION_SHAPE = env.action_space.shape
 
     if args.algo == "SAC":
+        trainer_class = ModelFreeTrainer
         algo = SAC(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -49,6 +52,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "TD3":
+        trainer_class = GemboTrainer
         algo = TD3(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -58,10 +62,25 @@ def run(args):
             device=args.device,
             expl_noise=args.expl_noise,
             seed=args.seed,
+            guided_exploration=args.ge,
             wandb=wandb
         )
     elif args.algo == "DDPG":
+        trainer_class = GemboTrainer  #ModelFreeTrainer
         algo = DDPG(
+            state_shape=STATE_SHAPE,
+            action_shape=ACTION_SHAPE,
+            target_update_coef=args.tau,
+            gamma=args.gamma,
+            batch_size=args.batch_size,
+            device=args.device,
+            seed=args.seed,
+            guided_exploration=args.ge,
+            wandb=wandb
+        )
+    elif args.algo == "GEMBO":
+        trainer_class = GemboTrainer
+        algo = GEMBO(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,
@@ -72,7 +91,7 @@ def run(args):
             wandb=wandb
         )
 
-    trainer = ModelFreeTrainer(
+    trainer = trainer_class(
         state_shape=STATE_SHAPE,
         action_shape=ACTION_SHAPE,
         env=env,
@@ -121,6 +140,7 @@ if __name__ == '__main__':
     p.add_argument("--stdout_log_every", type=int, default=int(100000))
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
+    p.add_argument("--ge", action="store_true")
     p.add_argument("--expl_noise", type=float, default=0.1)
     args = p.parse_args()
     run(args)
