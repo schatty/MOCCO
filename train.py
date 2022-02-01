@@ -42,7 +42,7 @@ def run(args):
             target_update_coef=args.tau,
             gamma=args.gamma,
             alpha_init=args.alpha_init,
-            lr_actor=args.lr_alpha,
+            lr_actor=args.lr_actor,
             lr_critic=args.lr_critic,
             lr_alpha=args.lr_alpha, 
             tune_alpha=args.tune_alpha,
@@ -60,6 +60,7 @@ def run(args):
             gamma=args.gamma,
             batch_size=args.batch_size,
             device=args.device,
+            expl_noise=args.expl_noise,
             seed=args.seed,
             guided_exploration=args.ge,
             wandb=wandb
@@ -123,7 +124,7 @@ if __name__ == '__main__':
     p.add_argument('--gamma', type=float, default=0.99)
     p.add_argument('--tau', type=float, default=5e-3)
     p.add_argument('--lr_actor', type=float, default=3e-4)
-    p.add_argument('--lr_critic', type=float, default=1e-3)
+    p.add_argument('--lr_critic', type=float, default=3e-4)
     p.add_argument('--lr_alpha', type=float, default=1e-3)
     p.add_argument('--alpha_init', type=float, default=0.2)
     p.add_argument('--tune_alpha', action="store_true")
@@ -140,5 +141,6 @@ if __name__ == '__main__':
     p.add_argument("--visualize_every", type=int, default=0)
     p.add_argument("--estimate_q_every", type=int, default=0)
     p.add_argument("--ge", action="store_true")
+    p.add_argument("--expl_noise", type=float, default=0.1)
     args = p.parse_args()
     run(args)
