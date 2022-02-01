@@ -7,7 +7,7 @@ import wandb
 from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
-from algos.gembo import GEMBO
+from algos.mocco import MOCCO
 from trainers.gembo_trainer import GemboTrainer
 from trainers.mf_trainer import ModelFreeTrainer
 from env import make_env
@@ -40,7 +40,6 @@ def run(args):
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,
-            gamma=args.gamma,
             alpha_init=args.alpha_init,
             lr_actor=args.lr_actor,
             lr_critic=args.lr_critic,
@@ -57,7 +56,6 @@ def run(args):
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,
-            gamma=args.gamma,
             batch_size=args.batch_size,
             device=args.device,
             expl_noise=args.expl_noise,
@@ -71,20 +69,19 @@ def run(args):
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,
-            gamma=args.gamma,
             batch_size=args.batch_size,
             device=args.device,
             seed=args.seed,
             guided_exploration=args.ge,
             wandb=wandb
         )
-    elif args.algo == "GEMBO":
+    elif args.algo == "MOCCO":
+        print("Guided exploraiton on: ", args.ge)
         trainer_class = GemboTrainer
-        algo = GEMBO(
+        algo = MOCCO(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             target_update_coef=args.tau,
-            gamma=args.gamma,
             batch_size=args.batch_size,
             device=args.device,
             seed=args.seed,
@@ -101,7 +98,7 @@ def run(args):
         start_steps=args.start_steps,
         buffer_size=args.buffer_size,
         batch_size=args.batch_size,
-        gamma=args.gamma,
+        gamma=0.99,
         eval_interval=args.eval_interval,
         device=args.device,
         log_dir=log_dir,
@@ -121,7 +118,6 @@ if __name__ == '__main__':
     p.add_argument('--env', type=str, default='HalfCheetah-v3')
     p.add_argument('--algo', type=str, default='SAC')
     p.add_argument('--num_steps', type=int, default=int(1e6))
-    p.add_argument('--gamma', type=float, default=0.99)
     p.add_argument('--tau', type=float, default=5e-3)
     p.add_argument('--lr_actor', type=float, default=3e-4)
     p.add_argument('--lr_critic', type=float, default=3e-4)
