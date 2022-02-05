@@ -68,11 +68,10 @@ def run(args):
         algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
-            target_update_coef=args.tau,
+            tau=args.tau,
             batch_size=args.batch_size,
             device=args.device,
             seed=args.seed,
-            guided_exploration=args.ge,
             wandb=wandb
         )
     elif args.algo == "MOCCO":
