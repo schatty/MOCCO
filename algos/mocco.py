@@ -113,14 +113,6 @@ class MOCCO:
         state = torch.tensor(
             state, dtype=self.dtype, device=self.device).unsqueeze_(0)
 
-        if not self.guided_exploration:
-            with torch.no_grad():
-                noise = (torch.randn(self.action_shape) * self.max_action * self.expl_noise).to(self.device)
-                action = self.actor(state) + noise
-
-            a = action.cpu().numpy()[0]
-            return np.clip(a, -self.max_action, self.max_action)
-
         a_pi = self.actor(state)
         noise, da_std, scale = self.get_guided_noise(state, a_pi=a_pi, with_info=True)
         noise = noise.cpu()

@@ -75,7 +75,6 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "MOCCO":
-        print("Guided exploraiton on: ", args.ge)
         trainer_class = GemboTrainer
         algo = MOCCO(
             state_shape=STATE_SHAPE,
@@ -114,8 +113,8 @@ def run(args):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('--env', type=str, default='HalfCheetah-v3')
-    p.add_argument('--algo', type=str, default='SAC')
+    p.add_argument('--env', type=str, default='point_mass-easy')
+    p.add_argument('--algo', type=str, default='MOCCO')
     p.add_argument('--num_steps', type=int, default=int(1e6))
     p.add_argument('--tau', type=float, default=5e-3)
     p.add_argument('--lr_actor', type=float, default=3e-4)
