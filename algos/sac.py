@@ -76,7 +76,7 @@ class GaussianPolicy(nn.Module):
 class SAC:
 
     def __init__(self, state_shape, action_shape, device, seed, batch_size=256, tune_alpha=False,
-                 gamma=0.99, lr_actor=3e-4, lr_critic=3e-4, lr_alpha=3e-4, alpha_init=1.0,
+                 gamma=0.99, lr_actor=3e-4, lr_critic=3e-4, lr_alpha=1e-3, alpha_init=0.2,
                  target_update_coef=5e-3, log_every=5000, wandb=None):
         np.random.seed(seed)
         torch.manual_seed(seed)
