@@ -40,7 +40,7 @@ class GemboTrainer(ModelFreeTrainer):
                          start_steps=start_steps, batch_size=batch_size, eval_interval=eval_interval,
                          num_eval_episodes=num_eval_episodes, save_buffer_every=save_buffer_every,
                          visualize_every=visualize_every, estimate_q_every=estimate_q_every, seed=seed,
-                         log_dir=log_dir, wandb=wandb)
+                         stdout_log_every=stdout_log_every, log_dir=log_dir, wandb=wandb)
 
         self.buffer_mc = MCEpisodicReplayBuffer(
             buffer_size=100000,
@@ -57,7 +57,7 @@ class GemboTrainer(ModelFreeTrainer):
 
         for env_step in range(self.num_steps + 1):
             ep_step += 1
-            if env_step <= 1000:# self.start_steps:
+            if env_step <= self.start_steps:
                 action = self.env.action_space.sample()
                 self.algo.accumulate_action_gradient(state)
             else:

@@ -74,7 +74,7 @@ class DDPG:
         a = action.cpu().numpy()[0]
         return np.clip(a, -self.max_action, self.max_action)
 
-    def update(self, batch, batch_mc):
+    def update(self, batch):
         # Sample replay buffer 
         #state, action, next_state, reward, done = batch
         state, action, reward, done, next_state = batch

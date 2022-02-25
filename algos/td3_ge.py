@@ -29,7 +29,7 @@ class DeterministicPolicy(nn.Module):
         return torch.tanh(self.mlp(states))
 
 
-class TD3:
+class TD3Guided:
 
     def __init__(self, state_shape, action_shape, device, seed, batch_size=256, policy_noise=0.2,
                  expl_noise=0.1, noise_clip=0.5, policy_freq=2, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,

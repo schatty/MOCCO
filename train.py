@@ -46,18 +46,17 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "TD3":
-        trainer_class = GemboTrainer
+        trainer_class = ModelFreeTrainer
         algo = TD3(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
             device=args.device,
             expl_noise=args.expl_noise,
             seed=args.seed,
-            guided_exploration=args.ge,
             wandb=wandb
         )
     elif args.algo == "DDPG":
-        trainer_class = GemboTrainer  #ModelFreeTrainer
+        trainer_class = ModelFreeTrainer
         algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,

@@ -94,7 +94,7 @@ class ModelFreeTrainer:
             if len(self.buffer) < self.batch_size:
                 continue
             batch = self.buffer.sample(self.batch_size)
-            self.algo.update(*batch)
+            self.algo.update(batch)
 
             if env_step % self.eval_interval == 0:
                 mean_reward = self.evaluate()
