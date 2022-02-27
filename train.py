@@ -39,7 +39,6 @@ def run(args):
         algo = SAC(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
-            target_update_coef=args.tau,
             tune_alpha=args.tune_alpha,
             device=args.device,
             seed=args.seed,

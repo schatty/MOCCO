@@ -132,9 +132,9 @@ class SAC:
             action, _ = self.actor.sample(state)
         return action.cpu().numpy()[0]
 
-    def update(self, states, actions, rewards, dones, next_states):
+    def update(self, batch):
+        states, actions, rewards, dones, next_states = batch  
         self.update_step += 1
-
         self.update_critic(states, actions, rewards, dones, next_states)
         self.update_actor(states)
 
