@@ -3,11 +3,12 @@ import os
 import numpy as np
 import wandb
 
+from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 from .buffers.mc_episodic_replay_buffer import MCEpisodicReplayBuffer
-from .base_trainer import BaseTrainer
+from .mf_trainer import ModelFreeTrainer
 
 
-class MOCCOTrainer(BaseTrainer):
+class GemboTrainer(ModelFreeTrainer):
 
     def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(1e6),
                  gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(1e3), batch_size=128,

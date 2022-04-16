@@ -6,7 +6,7 @@ import wandb
 from .buffers.episodic_replay_buffer import EpisodicReplayBuffer
 
 
-class BaseTrainer:
+class ModelFreeTrainer:
 
     def __init__(self, state_shape=None, action_shape=None, env=None, env_test=None, algo=None, buffer_size=int(1e6),
                  gamma=0.99, device=None, num_steps=int(1e6), start_steps=int(10e3), batch_size=128,
