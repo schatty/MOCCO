@@ -8,8 +8,8 @@ from algos.sac import SAC
 from algos.td3 import TD3
 from algos.ddpg import DDPG
 from algos.mocco import MOCCO
-from trainers.gembo_trainer import GemboTrainer
-from trainers.mf_trainer import ModelFreeTrainer
+from trainers.mocco_trainer import MOCCOTrainer
+from trainers.base_trainer import BaseTrainer
 from env import make_env
 
 
@@ -35,7 +35,7 @@ def run(args):
     ACTION_SHAPE = env.action_space.shape
 
     if args.algo == "SAC":
-        trainer_class = ModelFreeTrainer
+        trainer_class = BaseTrainer
         algo = SAC(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -45,7 +45,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "TD3":
-        trainer_class = ModelFreeTrainer
+        trainer_class = BaseTrainer
         algo = TD3(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -55,7 +55,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "DDPG":
-        trainer_class = ModelFreeTrainer
+        trainer_class = BaseTrainer
         algo = DDPG(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
@@ -64,7 +64,7 @@ def run(args):
             wandb=wandb
         )
     elif args.algo == "MOCCO":
-        trainer_class = GemboTrainer
+        trainer_class = MOCCOTrainer
         algo = MOCCO(
             state_shape=STATE_SHAPE,
             action_shape=ACTION_SHAPE,
