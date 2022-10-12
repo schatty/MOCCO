@@ -2,7 +2,7 @@
 
 <img align="right" width="280" src="https://user-images.githubusercontent.com/23639048/174118217-84722ed8-3fa1-4159-b9b4-4b0913841cbc.png">
 
-The source code for the paper "Guided Exploration in Reinforcement Learning via Monte Carlo Critic Optimization" (ArXiv link TBA) accepted at [ICML 2022, DARL Workshop](https://darl-workshop.github.io).
+The source code for the paper [Guided Exploration in Reinforcement Learning via Monte Carlo Critic Optimization](https://arxiv.org/abs/2206.12674) accepted at [ICML 2022, DARL Workshop](https://darl-workshop.github.io).
 
 __Idea__
 * Replace the random normal noise from the deterministic algorithm with guided exploration
@@ -32,4 +32,4 @@ bash scripts/mocco.sh point_mass-easy cuda:0
 
 ![mocco_eval](https://user-images.githubusercontent.com/23639048/174117437-adbfa41a-606c-4e85-95c8-d39c41766920.png)
 
-The paper curves are available at `data/curves` directory.
+The paper curves are available at [gdrive](https://drive.google.com/drive/folders/1opz875E3bbu1qCW8uzRoB45sm31ZKfbl?usp=sharing).
