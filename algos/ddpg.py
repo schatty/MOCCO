@@ -81,7 +81,7 @@ class DDPG:
 
         # Compute the target Q value
         target_Q = self.critic_target(next_state, self.actor_target(next_state))
-        target_Q = reward + (1.0 - done * self.discount * target_Q).detach()
+        target_Q = reward + (1.0 - done) * self.discount * target_Q.detach()
 
         # Get current Q estimate
         current_Q = self.critic(state, action)
