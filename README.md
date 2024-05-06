@@ -1,18 +1,18 @@
 # Guided Exploration in Reinforcement Learning via Monte Carlo Critic Optimization
 
-<img align="right" width="280" src="https://user-images.githubusercontent.com/23639048/174118217-84722ed8-3fa1-4159-b9b4-4b0913841cbc.png">
+The source code for the paper Guided Exploration in Reinforcement Learning via Monte Carla Critic Optimization [Arxiv](https://arxiv.org/abs/2206.12674), presented at
+* [AAMAS 2024](https://www.aamas2024-conference.auckland.ac.nz/accepted/extended-abstracts/)
+* [ICML 2022, DARL Workshop](https://darl-workshop.github.io)
 
-The source code for the paper [Guided Exploration in Reinforcement Learning via Monte Carlo Critic Optimization](https://arxiv.org/abs/2206.12674) accepted at [ICML 2022, DARL Workshop](https://darl-workshop.github.io).
+## Requirements
 
-__Idea__
-* Replace the random normal noise from the deterministic algorithm with guided exploration
-* Train an ensemble of action-conditioned Monte-Carlo Critics as a differentiable controller giving the direction towards the most unexplored environmental regions
-* Use the provided action direction from a controller as an auxiliary action component to guide a policy during exploration.
-* __MOCCO__ algorithm is the combination of the aforementioned guided exploration + using a mean of MC Critics ensemble as a second critic estimate for alleviating Q-value overestimation.
+The experiments were run with `python3.10` and `mujoco 2.3.7`, install full env via 
+
+```
+pip install -r requirements.txt
+```
 
 ## Usage
-
-The current version of the code works with [wandb](https://wandb.ai) as a logger tool.
 
 __Run single training__
 
@@ -30,6 +30,4 @@ bash scripts/mocco.sh point_mass-easy cuda:0
 
 ## Results
 
-![mocco_eval](https://user-images.githubusercontent.com/23639048/174117437-adbfa41a-606c-4e85-95c8-d39c41766920.png)
-
-The paper curves are available at [gdrive](https://drive.google.com/drive/folders/1opz875E3bbu1qCW8uzRoB45sm31ZKfbl?usp=sharing).
+![mocco_eval-2](https://github.com/schatty/MOCCO/assets/23639048/bbcf07c2-7b8e-4b34-8940-c81100d41d28)
